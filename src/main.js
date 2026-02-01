@@ -31,6 +31,8 @@ const state = {
   parts: [],
   timeline: [],
   timelineRows: [],
+  voiceCount: 0,
+  voices: [],
   isPlaying: false,
   scoreTitle: "",
   scoreReady: false,
@@ -289,7 +291,7 @@ function parseMusicXML(xmlText) {
   return { tempo, title, parts, timeline };
 }
 
-function createPartState(part) {
+function createVoiceState(voiceIndex, voiceName) {
   const sampler = new Tone.Sampler({
     urls: SAMPLE_URLS,
     baseUrl: SAMPLE_BASE,
@@ -302,8 +304,8 @@ function createPartState(part) {
   panner.toDestination();
 
   return {
-    name: part.name,
-    events: part.events,
+    name: voiceName.full,
+    shortName: voiceName.short,
     sampler,
     gain,
     panner,
@@ -313,18 +315,18 @@ function createPartState(part) {
   };
 }
 
-function applyPartSettings(part) {
-  part.gain.gain.value = part.muted ? 0 : part.volume;
-  part.panner.pan.value = part.pan;
+function applyVoiceSettings(voice) {
+  voice.gain.gain.value = voice.muted ? 0 : voice.volume;
+  voice.panner.pan.value = voice.pan;
 }
 
-function renderParts() {
+function renderVoices() {
   elements.parts.innerHTML = "";
-  state.parts.forEach((part) => {
+  state.voices.forEach((voice) => {
     const row = document.createElement("div");
     row.className = "part";
     row.innerHTML = `
-      <div class="part__name">${part.name}</div>
+      <div class="part__name">${voice.name}</div>
       <div class="part__controls">
         <label class="field">
           <span>Mute</span>
@@ -332,11 +334,11 @@ function renderParts() {
         </label>
         <label class="field">
           <span>Volume</span>
-          <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${part.volume}" />
+          <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${voice.volume}" />
         </label>
         <label class="field">
           <span>Pan</span>
-          <input data-role="pan" type="range" min="-1" max="1" step="0.01" value="${part.pan}" />
+          <input data-role="pan" type="range" min="-1" max="1" step="0.01" value="${voice.pan}" />
         </label>
       </div>
     `;
@@ -346,22 +348,22 @@ function renderParts() {
     const panInput = row.querySelector('[data-role="pan"]');
 
     muteInput.addEventListener("change", (event) => {
-      part.muted = event.target.checked;
-      applyPartSettings(part);
+      voice.muted = event.target.checked;
+      applyVoiceSettings(voice);
     });
 
     volumeInput.addEventListener("input", (event) => {
-      part.volume = Number(event.target.value);
-      applyPartSettings(part);
+      voice.volume = Number(event.target.value);
+      applyVoiceSettings(voice);
     });
 
     panInput.addEventListener("input", (event) => {
-      part.pan = Number(event.target.value);
-      applyPartSettings(part);
+      voice.pan = Number(event.target.value);
+      applyVoiceSettings(voice);
     });
 
     elements.parts.appendChild(row);
-    applyPartSettings(part);
+    applyVoiceSettings(voice);
   });
 }
 
@@ -383,59 +385,195 @@ function formatNoteShort(midi, durationBeats) {
   return `${noteName}${dur}`;
 }
 
+function assignVoicesToNotes() {
+  const notes = state.timeline.filter((e) => e.type === "note" && e.midi !== undefined);
+  if (notes.length === 0) {
+    state.voiceCount = 0;
+    return;
+  }
+
+  const sortedNotes = [...notes].sort((a, b) => {
+    if (a.timeBeats !== b.timeBeats) return a.timeBeats - b.timeBeats;
+    return b.midi - a.midi;
+  });
+
+  const voiceEndTimes = [];
+
+  for (const note of sortedNotes) {
+    const noteStart = note.timeBeats;
+    const noteEnd = noteStart + note.durationBeats;
+
+    let assignedVoice = -1;
+    for (let i = 0; i < voiceEndTimes.length; i++) {
+      if (voiceEndTimes[i] <= noteStart) {
+        assignedVoice = i;
+        voiceEndTimes[i] = noteEnd;
+        break;
+      }
+    }
+
+    if (assignedVoice === -1) {
+      assignedVoice = voiceEndTimes.length;
+      voiceEndTimes.push(noteEnd);
+    }
+
+    note.voiceIndex = assignedVoice;
+  }
+
+  state.voiceCount = voiceEndTimes.length;
+}
+
+function analyzeVoiceNames() {
+  const notes = state.timeline.filter((e) => e.type === "note" && e.midi !== undefined);
+  if (notes.length === 0 || state.voiceCount === 0) return [];
+
+  const voiceStats = [];
+  for (let i = 0; i < state.voiceCount; i++) {
+    voiceStats.push({ index: i, pitches: [] });
+  }
+
+  for (const note of notes) {
+    if (note.voiceIndex !== undefined) {
+      voiceStats[note.voiceIndex].pitches.push(note.midi);
+    }
+  }
+
+  for (const voice of voiceStats) {
+    if (voice.pitches.length > 0) {
+      voice.pitches.sort((a, b) => a - b);
+      const mid = Math.floor(voice.pitches.length / 2);
+      voice.median = voice.pitches.length % 2 === 0
+        ? (voice.pitches[mid - 1] + voice.pitches[mid]) / 2
+        : voice.pitches[mid];
+      voice.min = voice.pitches[0];
+      voice.max = voice.pitches[voice.pitches.length - 1];
+    } else {
+      voice.median = 0;
+      voice.min = 0;
+      voice.max = 0;
+    }
+  }
+
+  const sorted = [...voiceStats].sort((a, b) => b.median - a.median);
+
+  const typeThresholds = [
+    { type: "S", minMedian: 67 },
+    { type: "A", minMedian: 58 },
+    { type: "T", minMedian: 52 },
+    { type: "B", minMedian: 0 }
+  ];
+
+  const typeCounts = { S: 0, A: 0, T: 0, B: 0 };
+  const names = new Array(state.voiceCount);
+
+  for (const voice of sorted) {
+    let type = "B";
+    for (const threshold of typeThresholds) {
+      if (voice.median >= threshold.minMedian) {
+        type = threshold.type;
+        break;
+      }
+    }
+    voice.type = type;
+    typeCounts[type]++;
+    const num = typeCounts[type];
+
+    const typeNames = {
+      S: { short: num > 1 ? `S${num}` : "S", full: num > 1 ? `Soprano ${num}` : "Soprano" },
+      A: { short: num > 1 ? `A${num}` : "A", full: num > 1 ? `Alto ${num}` : "Alto" },
+      T: { short: num > 1 ? `T${num}` : "T", full: num > 1 ? `Tenor ${num}` : "Tenor" },
+      B: { short: num > 1 ? `B${num}` : "B", full: num > 1 ? `Bass ${num}` : "Bass" }
+    };
+
+    names[voice.index] = typeNames[type];
+  }
+
+  for (const type of ["S", "A", "T", "B"]) {
+    if (typeCounts[type] === 1) {
+      const voice = sorted.find((v) => v.type === type);
+      if (voice) {
+        names[voice.index] = {
+          S: { short: "S", full: "Soprano" },
+          A: { short: "A", full: "Alto" },
+          T: { short: "T", full: "Tenor" },
+          B: { short: "B", full: "Bass" }
+        }[type];
+      }
+    }
+  }
+
+  return names;
+}
+
 function buildTimelineRows() {
   const notes = state.timeline.filter((e) => e.type === "note" && e.midi !== undefined);
+  if (notes.length === 0) return { rows: [], voiceCount: 0 };
 
   const grouped = new Map();
-  notes.forEach((entry) => {
+  for (const entry of notes) {
     const key = entry.timeBeats.toFixed(4);
     if (!grouped.has(key)) {
       grouped.set(key, { timeBeats: entry.timeBeats, measure: entry.measure, notes: [] });
     }
     grouped.get(key).notes.push(entry);
-  });
+  }
 
   const rows = Array.from(grouped.values())
     .sort((a, b) => a.timeBeats - b.timeBeats)
     .map((group) => {
-      const sortedNotes = group.notes.sort((a, b) => b.midi - a.midi);
-      const notesStr = sortedNotes.map((n) => formatNoteShort(n.midi, n.durationBeats)).join(" ");
+      const voiceColumns = new Array(state.voiceCount).fill(null);
+
+      for (const note of group.notes) {
+        if (note.voiceIndex !== undefined) {
+          voiceColumns[note.voiceIndex] = {
+            midi: note.midi,
+            durationBeats: note.durationBeats,
+            display: formatNoteShort(note.midi, note.durationBeats)
+          };
+        }
+      }
+
       return {
         timeBeats: group.timeBeats,
         timeSeconds: (group.timeBeats * 60) / state.tempo,
         measure: group.measure,
-        notes: notesStr
+        voiceColumns
       };
     });
 
-  return rows;
+  return { rows, voiceCount: state.voiceCount };
 }
 
 function renderTimeline() {
-  const rows = buildTimelineRows();
+  const { rows, voiceCount } = buildTimelineRows();
   state.timelineRows = rows;
+
   if (rows.length === 0) {
     elements.timeline.innerHTML = "<p class=\"hint\">No events to display.</p>";
     return;
   }
 
+  const voiceHeaders = state.voices.map((v) => `<span>${v.shortName}</span>`).join("");
   const header = `
-    <div class="timeline__row timeline__row--header">
+    <div class="timeline__row timeline__row--header" style="grid-template-columns: 4rem 4rem 2rem repeat(${voiceCount}, 1fr);">
       <span>Beat</span>
       <span>Sec</span>
       <span>M</span>
-      <span>Notes</span>
+      ${voiceHeaders}
     </div>
   `;
 
   const rowsHtml = rows
     .map((entry, index) => {
+      const voiceCells = entry.voiceColumns
+        .map((cell) => `<span class="voice-cell">${cell ? cell.display : ""}</span>`)
+        .join("");
       return `
-        <div class="timeline__row" data-row-index="${index}" data-time-beats="${entry.timeBeats}">
+        <div class="timeline__row" data-row-index="${index}" data-time-beats="${entry.timeBeats}" style="grid-template-columns: 4rem 4rem 2rem repeat(${voiceCount}, 1fr);">
           <span>${entry.timeBeats.toFixed(2)}</span>
           <span>${entry.timeSeconds.toFixed(2)}</span>
           <span>${entry.measure + 1}</span>
-          <span>${entry.notes}</span>
+          ${voiceCells}
         </div>
       `;
     })
@@ -496,16 +634,19 @@ function buildSchedule() {
   Tone.Transport.cancel();
   Tone.Transport.bpm.value = state.tempo;
 
-  state.parts.forEach((part) => {
-    part.events.forEach((event) => {
-      const startSeconds = (event.timeBeats * 60) / state.tempo;
-      const durationSeconds = (event.durationBeats * 60) / state.tempo;
-      const noteName = midiToNoteName(event.midi);
-      Tone.Transport.schedule((time) => {
-        part.sampler.triggerAttackRelease(noteName, durationSeconds, time, 0.8);
-      }, startSeconds);
-    });
-  });
+  const notes = state.timeline.filter((e) => e.type === "note" && e.midi !== undefined);
+  for (const note of notes) {
+    if (note.voiceIndex === undefined) continue;
+    const voice = state.voices[note.voiceIndex];
+    if (!voice) continue;
+
+    const startSeconds = (note.timeBeats * 60) / state.tempo;
+    const durationSeconds = (note.durationBeats * 60) / state.tempo;
+    const noteName = midiToNoteName(note.midi);
+    Tone.Transport.schedule((time) => {
+      voice.sampler.triggerAttackRelease(noteName, durationSeconds, time, 0.8);
+    }, startSeconds);
+  }
 }
 
 async function startPlayback() {
@@ -531,7 +672,9 @@ function stopPlayback() {
     state.playbackRAF = null;
   }
   const rows = elements.timeline.querySelectorAll(".timeline__row--active");
-  rows.forEach((row) => row.classList.remove("timeline__row--active"));
+  for (const row of rows) {
+    row.classList.remove("timeline__row--active");
+  }
 }
 
 function setTempo(value) {
@@ -554,19 +697,26 @@ async function loadScore() {
 
   state.tempo = Math.round(parsed.tempo);
   state.scoreTitle = parsed.title;
+  state.timeline = parsed.timeline;
+  state.parts = parsed.parts;
   elements.tempo.value = String(state.tempo);
   elements.tempoValue.textContent = String(state.tempo);
 
-  const partStates = parsed.parts.map(createPartState);
+  assignVoicesToNotes();
+  const voiceNames = analyzeVoiceNames();
+
+  const voiceStates = [];
+  for (let i = 0; i < state.voiceCount; i++) {
+    voiceStates.push(createVoiceState(i, voiceNames[i]));
+  }
   await Tone.loaded();
-  state.parts = partStates;
-  state.timeline = parsed.timeline;
+  state.voices = voiceStates;
   state.scoreReady = true;
 
-  renderParts();
+  renderVoices();
   renderTimeline();
   elements.playButton.disabled = false;
-  setStatus(`Loaded: ${parsed.title} (${parsed.parts.length} parts)`);
+  setStatus(`Loaded: ${parsed.title} (${state.voiceCount} voices)`);
 }
 
 elements.playButton.addEventListener("click", () => {
@@ -586,44 +736,28 @@ elements.tempo.addEventListener("input", (event) => {
 });
 
 elements.downloadJson.addEventListener("click", () => {
-  const rows = buildTimelineRows();
+  const { rows, voiceCount } = buildTimelineRows();
   downloadFile(
     "timeline.json",
-    JSON.stringify({ tempo: state.tempo, events: rows }, null, 2)
+    JSON.stringify({ tempo: state.tempo, voiceCount, events: rows }, null, 2)
   );
 });
 
 elements.downloadCsv.addEventListener("click", () => {
-  const rows = buildTimelineRows();
-  const header = [
-    "timeBeats",
-    "timeSeconds",
-    "measure",
-    "part",
-    "voice",
-    "staff",
-    "type",
-    "pitch",
-    "durationBeats",
-    "durationSeconds"
-  ];
+  const { rows, voiceCount } = buildTimelineRows();
+  const voiceHeaders = Array.from({ length: voiceCount }, (_, i) => `voice${i + 1}`);
+  const header = ["timeBeats", "timeSeconds", "measure", ...voiceHeaders];
   const lines = [header.join(",")];
-  rows.forEach((entry) => {
-    const pitch = entry.midi !== undefined ? midiToNoteName(entry.midi) : "";
+  for (const entry of rows) {
+    const voiceCells = entry.voiceColumns.map((cell) => (cell ? cell.display : ""));
     const line = [
       entry.timeBeats.toFixed(2),
       entry.timeSeconds.toFixed(2),
       entry.measure + 1,
-      entry.partName,
-      entry.voice,
-      entry.staff,
-      entry.type,
-      pitch,
-      entry.durationBeats.toFixed(2),
-      entry.durationSeconds.toFixed(2)
+      ...voiceCells
     ];
     lines.push(line.join(","));
-  });
+  }
   downloadFile("timeline.csv", `${lines.join("\n")}\n`);
 });
 

@@ -171,8 +171,7 @@ h1 {
 
 .timeline__row {
   display: grid;
-  grid-template-columns: 60px 60px 40px 1fr;
-  gap: 12px;
+  gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid #e8e2d8;
 }
@@ -190,6 +189,12 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.voice-cell {
+  font-family: "Spectral", "Georgia", serif;
+  text-align: center;
+  min-width: 60px;
 }
 
 .timeline__row--active {
@@ -210,9 +215,5 @@ h1 {
   .tempo {
     grid-template-columns: 1fr;
     gap: 6px;
-  }
-
-  .timeline__row {
-    grid-template-columns: 60px 60px 40px 1fr;
   }
 }
