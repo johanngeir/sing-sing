@@ -81,14 +81,15 @@ function applyUserVoiceMix() {
   if (state.voices.length === 0) return;
   
   const mappedVoice = mapUserVoiceToScore(state.userVoice, state.voices);
+  const panMultiplier = state.panInverted ? -1 : 1;
   
   for (const voice of state.voices) {
     if (voice.shortName === mappedVoice) {
       voice.volume = 1.0;
-      voice.pan = 0.9;
+      voice.pan = 0.9 * panMultiplier;
     } else {
       voice.volume = 0.6;
-      voice.pan = -0.9;
+      voice.pan = -0.9 * panMultiplier;
     }
     applyVoiceSettings(voice);
   }
@@ -97,7 +98,7 @@ function applyUserVoiceMix() {
 }
 
 const SAMPLE_BASE = "/salamander/samples/";
-const SAMPLE_URLS = {
+const SAMPLE_URLS_V8 = {
   A3: "A3v8.wav",
   C3: "C3v8.wav",
   "D#3": "Ds3v8.wav",
@@ -108,12 +109,24 @@ const SAMPLE_URLS = {
   "F#4": "Fs4v8.wav",
   C5: "C5v8.wav"
 };
+const SAMPLE_URLS_V12 = {
+  A3: "A3v12.wav",
+  C3: "C3v12.wav",
+  "D#3": "Ds3v12.wav",
+  "F#3": "Fs3v12.wav",
+  A4: "A4v12.wav",
+  C4: "C4v12.wav",
+  "D#4": "Ds4v12.wav",
+  "F#4": "Fs4v12.wav",
+  C5: "C5v12.wav"
+};
 
 const elements = {
   status: document.getElementById("status"),
   scoreSelect: document.getElementById("scoreSelect"),
   fileInput: document.getElementById("fileInput"),
   userVoice: document.getElementById("userVoice"),
+  panInvert: document.getElementById("panInvert"),
   playButton: document.getElementById("playButton"),
   stopButton: document.getElementById("stopButton"),
   tempo: document.getElementById("tempo"),
@@ -128,6 +141,7 @@ const elements = {
 const state = {
   currentScore: null,
   userVoice: localStorage.getItem("userVoice") || "T1",
+  panInverted: localStorage.getItem("panInverted") === "true",
   tempo: 120,
   originalTempo: 120,
   parts: [],
@@ -138,7 +152,8 @@ const state = {
   isPlaying: false,
   scoreTitle: "",
   scoreReady: false,
-  playbackRAF: null
+  playbackRAF: null,
+  advancedVoiceMode: false
 };
 
 function setStatus(message) {
@@ -402,9 +417,9 @@ function parseMusicXML(xmlText) {
   return { tempo, title, parts, timeline };
 }
 
-function createVoiceState(voiceIndex, voiceName) {
+function createVoiceState(voiceIndex, voiceName, sampleUrls = SAMPLE_URLS_V8) {
   const sampler = new Tone.Sampler({
-    urls: SAMPLE_URLS,
+    urls: sampleUrls,
     baseUrl: SAMPLE_BASE,
     release: 1
   });
@@ -433,51 +448,159 @@ function applyVoiceSettings(voice) {
 
 function renderVoices() {
   elements.parts.innerHTML = "";
-  state.voices.forEach((voice) => {
+  
+  if (state.voices.length === 0) return;
+  
+  const mappedVoice = mapUserVoiceToScore(state.userVoice, state.voices);
+  const userVoice = state.voices.find(v => v.shortName === mappedVoice);
+  const otherVoices = state.voices.filter(v => v.shortName !== mappedVoice);
+  
+  if (state.advancedVoiceMode) {
+    renderAdvancedVoiceControls();
+  } else {
+    renderSimpleVoiceControls(userVoice, otherVoices);
+  }
+}
+
+function renderSimpleVoiceControls(userVoice, otherVoices) {
+  const container = elements.parts;
+  
+  if (userVoice) {
+    container.appendChild(createVoiceControlRow(userVoice, "My Voice", false));
+  }
+  
+  if (otherVoices.length > 0) {
+    const otherVolume = otherVoices[0].volume;
+    const otherPan = otherVoices[0].pan;
+    const otherMuted = otherVoices.every(v => v.muted);
+    
     const row = document.createElement("div");
     row.className = "part";
     row.innerHTML = `
-      <div class="part__name">${voice.name}</div>
+      <div class="part__name">Other Voices</div>
       <div class="part__controls">
         <label class="field">
           <span>Mute</span>
-          <input data-role="mute" type="checkbox" />
+          <input data-role="mute" type="checkbox" ${otherMuted ? "checked" : ""} />
         </label>
         <label class="field">
           <span>Volume</span>
-          <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${voice.volume}" title="${Math.round(voice.volume * 100)}%" />
+          <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${otherVolume}" title="${Math.round(otherVolume * 100)}%" />
         </label>
         <label class="field">
           <span>Pan</span>
-          <input data-role="pan" type="range" min="-1" max="1" step="0.01" value="${voice.pan}" title="${formatPan(voice.pan)}" />
+          <input data-role="pan" type="range" min="-1" max="1" step="0.01" value="${otherPan}" title="${formatPan(otherPan)}" />
         </label>
       </div>
     `;
-
+    
     const muteInput = row.querySelector('[data-role="mute"]');
     const volumeInput = row.querySelector('[data-role="volume"]');
     const panInput = row.querySelector('[data-role="pan"]');
-
+    
     muteInput.addEventListener("change", (event) => {
-      voice.muted = event.target.checked;
-      applyVoiceSettings(voice);
+      for (const voice of otherVoices) {
+        voice.muted = event.target.checked;
+        applyVoiceSettings(voice);
+      }
     });
-
+    
     volumeInput.addEventListener("input", (event) => {
-      voice.volume = Number(event.target.value);
-      volumeInput.title = `${Math.round(voice.volume * 100)}%`;
-      applyVoiceSettings(voice);
+      const value = Number(event.target.value);
+      volumeInput.title = `${Math.round(value * 100)}%`;
+      for (const voice of otherVoices) {
+        voice.volume = value;
+        applyVoiceSettings(voice);
+      }
     });
-
+    
     panInput.addEventListener("input", (event) => {
-      voice.pan = Number(event.target.value);
-      panInput.title = formatPan(voice.pan);
-      applyVoiceSettings(voice);
+      const value = Number(event.target.value);
+      panInput.title = formatPan(value);
+      for (const voice of otherVoices) {
+        voice.pan = value;
+        applyVoiceSettings(voice);
+      }
     });
+    
+    container.appendChild(row);
+  }
+  
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "btn btn--small voice-mode-toggle";
+  toggleBtn.textContent = "Show all voices";
+  toggleBtn.addEventListener("click", () => {
+    state.advancedVoiceMode = true;
+    renderVoices();
+  });
+  container.appendChild(toggleBtn);
+}
 
-    elements.parts.appendChild(row);
+function renderAdvancedVoiceControls() {
+  const container = elements.parts;
+  
+  for (const voice of state.voices) {
+    container.appendChild(createVoiceControlRow(voice, voice.name, true));
+  }
+  
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "btn btn--small voice-mode-toggle";
+  toggleBtn.textContent = "Simple view";
+  toggleBtn.addEventListener("click", () => {
+    state.advancedVoiceMode = false;
+    renderVoices();
+  });
+  container.appendChild(toggleBtn);
+}
+
+function createVoiceControlRow(voice, label, isAdvanced) {
+  const row = document.createElement("div");
+  row.className = "part";
+  if (!isAdvanced && label === "My Voice") {
+    row.classList.add("part--user");
+  }
+  
+  row.innerHTML = `
+    <div class="part__name">${label}</div>
+    <div class="part__controls">
+      <label class="field">
+        <span>Mute</span>
+        <input data-role="mute" type="checkbox" ${voice.muted ? "checked" : ""} />
+      </label>
+      <label class="field">
+        <span>Volume</span>
+        <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${voice.volume}" title="${Math.round(voice.volume * 100)}%" />
+      </label>
+      <label class="field">
+        <span>Pan</span>
+        <input data-role="pan" type="range" min="-1" max="1" step="0.01" value="${voice.pan}" title="${formatPan(voice.pan)}" />
+      </label>
+    </div>
+  `;
+
+  const muteInput = row.querySelector('[data-role="mute"]');
+  const volumeInput = row.querySelector('[data-role="volume"]');
+  const panInput = row.querySelector('[data-role="pan"]');
+
+  muteInput.addEventListener("change", (event) => {
+    voice.muted = event.target.checked;
     applyVoiceSettings(voice);
   });
+
+  volumeInput.addEventListener("input", (event) => {
+    voice.volume = Number(event.target.value);
+    volumeInput.title = `${Math.round(voice.volume * 100)}%`;
+    applyVoiceSettings(voice);
+  });
+
+  panInput.addEventListener("input", (event) => {
+    voice.pan = Number(event.target.value);
+    panInput.title = formatPan(voice.pan);
+    applyVoiceSettings(voice);
+  });
+
+  applyVoiceSettings(voice);
+  return row;
 }
 
 function formatPan(pan) {
@@ -984,10 +1107,13 @@ async function loadScoreFromText(xmlText) {
 
   assignVoicesToNotes();
   const voiceNames = analyzeVoiceNames();
+  const mappedUserVoice = mapUserVoiceToScore(state.userVoice, voiceNames.map(v => ({ shortName: v.short })));
 
   const voiceStates = [];
   for (let i = 0; i < state.voiceCount; i++) {
-    voiceStates.push(createVoiceState(i, voiceNames[i]));
+    const isUserVoice = voiceNames[i].short === mappedUserVoice;
+    const sampleUrls = isUserVoice ? SAMPLE_URLS_V12 : SAMPLE_URLS_V8;
+    voiceStates.push(createVoiceState(i, voiceNames[i], sampleUrls));
   }
   await Tone.loaded();
   state.voices = voiceStates;
@@ -1106,8 +1232,15 @@ elements.userVoice.addEventListener("change", (event) => {
   setUserVoice(event.target.value);
 });
 
+elements.panInvert.addEventListener("change", (event) => {
+  state.panInverted = event.target.checked;
+  localStorage.setItem("panInverted", state.panInverted);
+  applyUserVoiceMix();
+});
+
 function initUserVoice() {
   elements.userVoice.value = state.userVoice;
+  elements.panInvert.checked = state.panInverted;
 }
 
 function populateScoreSelect() {

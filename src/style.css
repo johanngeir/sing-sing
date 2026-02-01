@@ -63,6 +63,19 @@ body {
   border-color: #1d1913;
 }
 
+.pan-invert {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #5a5045;
+  cursor: pointer;
+}
+
+.pan-invert input {
+  cursor: pointer;
+}
+
 .score-select {
   padding: 10px 16px;
   font-size: 1rem;
@@ -241,6 +254,16 @@ h1 {
 }
 
 .field input[type="range"] {
+  width: 100%;
+}
+
+.part--user {
+  background: #ebe5d8;
+  border-color: #c9bfae;
+}
+
+.voice-mode-toggle {
+  margin-top: 8px;
   width: 100%;
 }
 
