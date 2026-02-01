@@ -1,0 +1,6 @@
+node_modules/
+dist/
+public/salamander/
+public/score.musicxml
+*.log
+.DS_Store

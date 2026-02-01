@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JS Music Player POC</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app__header">
+        <div>
+          <p class="eyebrow">POC</p>
+          <h1>MusicXML Audio Playback</h1>
+          <p class="subtitle">Salamander piano samples · per-part volume/pan/mute · tempo control</p>
+        </div>
+        <div class="status" id="status">Loading score...</div>
+      </header>
+
+      <section class="panel">
+        <div class="controls">
+          <button id="playButton" class="btn btn--primary" disabled>Play</button>
+          <button id="stopButton" class="btn" disabled>Stop</button>
+        </div>
+        <div class="tempo">
+          <label for="tempo">Tempo (BPM)</label>
+          <input id="tempo" type="range" min="40" max="200" value="120" />
+          <span id="tempoValue">120</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <h2>Parts</h2>
+          <p class="hint">Use pan sliders to place your voice left and others right.</p>
+        </div>
+        <div id="parts" class="parts"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <h2>Timeline</h2>
+          <div class="timeline__actions">
+            <button id="downloadJson" class="btn">Download JSON</button>
+            <button id="downloadCsv" class="btn">Download CSV</button>
+          </div>
+        </div>
+        <div id="timeline" class="timeline"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
