@@ -253,7 +253,8 @@ const state = {
    loopA: null,
    loopB: null,
    loopASeconds: null,
-   loopBSeconds: null
+   loopBSeconds: null,
+   isSeeking: false
 };
 
 function setStatus(message) {
@@ -727,9 +728,15 @@ function createVoiceControlRow(voiceShortName, label, isAdvanced) {
 }
 
 function formatPan(pan) {
-  if (Math.abs(pan) < 0.05) return "Center";
-  const pct = Math.round(Math.abs(pan) * 100);
-  return pan < 0 ? `${pct}% L` : `${pct}% R`;
+   if (Math.abs(pan) < 0.05) return "Center";
+   const pct = Math.round(Math.abs(pan) * 100);
+   return pan < 0 ? `${pct}% L` : `${pct}% R`;
+}
+
+function formatTime(seconds) {
+   const mins = Math.floor(seconds / 60);
+   const secs = Math.floor(seconds % 60);
+   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 function formatDuration(durationBeats) {
@@ -1108,18 +1115,25 @@ function updatePlaybackHighlight() {
     }
   }
 
-  rows.forEach((row, index) => {
-    if (index === activeIndex) {
-      row.classList.add("timeline__row--active");
-      if (!state.autoScrollPaused) {
-        row.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      }
-    } else {
-      row.classList.remove("timeline__row--active");
-    }
-  });
+   rows.forEach((row, index) => {
+     if (index === activeIndex) {
+       row.classList.add("timeline__row--active");
+       if (!state.autoScrollPaused) {
+         row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+       }
+     } else {
+       row.classList.remove("timeline__row--active");
+     }
+   });
 
-  state.playbackRAF = requestAnimationFrame(updatePlaybackHighlight);
+    if (!state.isSeeking) {
+      elements.seekBar.value = currentSeconds;
+    }
+
+    const currentMeasure = getCurrentMeasure();
+    elements.currentTime.textContent = `${formatTime(currentSeconds)} (M. ${currentMeasure + 1})`;
+
+    state.playbackRAF = requestAnimationFrame(updatePlaybackHighlight);
 }
 
 function downloadFile(filename, content) {
@@ -1293,23 +1307,45 @@ async function loadScoreFromText(xmlText) {
   state.voices = voiceStates;
   state.scoreReady = true;
 
-  applyUserVoiceMix();
-  renderTimeline();
-  setStatus(`Loaded: ${parsed.title} (${state.voiceCount} voices)`);
+    applyUserVoiceMix();
+    renderTimeline();
+    const totalDuration = getTotalDuration();
+    elements.seekBar.max = totalDuration;
+    elements.seekBar.value = 0;
+    const totalMeasures = getTotalMeasures();
+    elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
+    elements.currentTime.textContent = "0:00 (M. 1)";
+    setStatus(`Loaded: ${parsed.title} (${state.voiceCount} voices)`);
 }
 
 elements.playPauseButton.addEventListener("click", async () => {
-   if (state.isPlaying) {
-     pausePlayback();
-   } else {
-     // Resume from current position if paused, otherwise start from beginning
-     const position = Tone.Transport.seconds;
-     try {
-       await startPlayback(position > 0 ? position : 0);
-     } catch (error) {
-       setStatus(`Playback error: ${error.message}`);
-     }
-   }
+    if (state.isPlaying) {
+      pausePlayback();
+    } else {
+      // Resume from current position if paused, otherwise start from beginning
+      const position = Tone.Transport.seconds;
+      try {
+        await startPlayback(position > 0 ? position : 0);
+      } catch (error) {
+        setStatus(`Playback error: ${error.message}`);
+      }
+    }
+});
+
+elements.seekBar.addEventListener("input", () => {
+  Tone.Transport.seconds = parseFloat(elements.seekBar.value);
+});
+
+elements.seekBar.addEventListener("pointerdown", () => {
+  state.isSeeking = true;
+});
+
+elements.seekBar.addEventListener("pointerup", () => {
+  state.isSeeking = false;
+});
+
+elements.seekBar.addEventListener("pointercancel", () => {
+  state.isSeeking = false;
 });
 
 elements.playerStopButton.addEventListener("click", () => {
