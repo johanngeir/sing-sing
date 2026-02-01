@@ -16,7 +16,7 @@
         </div>
         <div class="header__right">
           <div class="score-controls">
-            <label class="my-voice">
+            <label class="my-voice" title="Select the voice part you're singing">
               <span>My voice:</span>
               <select id="userVoice">
                 <option value="S1">Soprano 1</option>
@@ -30,7 +30,7 @@
                 <option value="B3">Bass 3</option>
               </select>
             </label>
-            <label class="pan-invert">
+            <label class="pan-invert" title="Swap your voice to left ear, others to right">
               <input type="checkbox" id="panInvert" />
               <span>Flip L/R</span>
             </label>
@@ -51,20 +51,24 @@
         <aside class="sidebar">
           <section class="panel">
             <div class="controls">
-              <button id="playButton" class="btn btn--primary" disabled>Play</button>
-              <button id="stopButton" class="btn" disabled>Stop</button>
+              <button id="playButton" class="btn btn--primary" disabled title="Start playback (loads samples on first play)">Play</button>
+              <button id="stopButton" class="btn" disabled title="Stop playback">Stop</button>
             </div>
-            <div class="tempo">
-              <label for="tempo">Tempo (BPM)</label>
-              <input id="tempo" type="range" min="40" max="200" value="120" />
-              <span id="tempoValue">120</span>
-            </div>
-            <div class="tempo-presets" id="tempoPresets">
-              <button class="btn btn--small" data-tempo-pct="50">50%</button>
-              <button class="btn btn--small" data-tempo-pct="75">75%</button>
-              <button class="btn btn--small btn--active" data-tempo-pct="100">100%</button>
-              <button class="btn btn--small" data-tempo-pct="125">125%</button>
-              <button class="btn btn--small" data-tempo-pct="150">150%</button>
+            <div class="tempo-group">
+              <div class="tempo">
+                <label for="tempo">Tempo (BPM)</label>
+                <input id="tempo" type="range" min="40" max="200" value="120" />
+                <span id="tempoValue">120</span>
+              </div>
+              <div class="tempo-presets" id="tempoPresets">
+                <button class="btn btn--small" data-tempo-pct="50" title="Half speed">0.5×</button>
+                <button class="btn btn--small" data-tempo-pct="80" title="Slower">0.8×</button>
+                <button class="btn btn--small" data-tempo-pct="90" title="Slightly slower">0.9×</button>
+                <button class="btn btn--small btn--active" data-tempo-pct="100" title="Original tempo">1×</button>
+                <button class="btn btn--small" data-tempo-pct="110" title="Slightly faster">1.1×</button>
+                <button class="btn btn--small" data-tempo-pct="120" title="Faster">1.2×</button>
+                <button class="btn btn--small" data-tempo-pct="150" title="Half again as fast">1.5×</button>
+              </div>
             </div>
           </section>
 
@@ -81,8 +85,8 @@
           <div class="panel__header">
             <h2>Timeline</h2>
             <div class="timeline__actions">
-              <button id="downloadJson" class="btn">JSON</button>
-              <button id="downloadCsv" class="btn">CSV</button>
+              <button id="downloadJson" class="btn" title="Download timeline data as JSON">JSON</button>
+              <button id="downloadCsv" class="btn" title="Download timeline data as CSV">CSV</button>
             </div>
           </div>
           <div id="timeline" class="timeline"></div>

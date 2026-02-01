@@ -477,12 +477,14 @@ function renderSimpleVoiceControls(userVoice, otherVoices) {
     const row = document.createElement("div");
     row.className = "part";
     row.innerHTML = `
-      <div class="part__name">Other Voices</div>
-      <div class="part__controls">
-        <label class="field">
-          <span>Mute</span>
+      <div class="part__header">
+        <div class="part__name">Other Voices</div>
+        <label class="part__mute" title="Mute all other voices">
           <input data-role="mute" type="checkbox" ${otherMuted ? "checked" : ""} />
+          <span>Mute</span>
         </label>
+      </div>
+      <div class="part__controls">
         <label class="field">
           <span>Volume</span>
           <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${otherVolume}" title="${Math.round(otherVolume * 100)}%" />
@@ -529,6 +531,7 @@ function renderSimpleVoiceControls(userVoice, otherVoices) {
   const toggleBtn = document.createElement("button");
   toggleBtn.className = "btn btn--small voice-mode-toggle";
   toggleBtn.textContent = "Show all voices";
+  toggleBtn.title = "Show individual controls for each voice";
   toggleBtn.addEventListener("click", () => {
     state.advancedVoiceMode = true;
     renderVoices();
@@ -546,6 +549,7 @@ function renderAdvancedVoiceControls() {
   const toggleBtn = document.createElement("button");
   toggleBtn.className = "btn btn--small voice-mode-toggle";
   toggleBtn.textContent = "Simple view";
+  toggleBtn.title = "Group other voices into one control";
   toggleBtn.addEventListener("click", () => {
     state.advancedVoiceMode = false;
     renderVoices();
@@ -561,12 +565,14 @@ function createVoiceControlRow(voice, label, isAdvanced) {
   }
   
   row.innerHTML = `
-    <div class="part__name">${label}</div>
-    <div class="part__controls">
-      <label class="field">
-        <span>Mute</span>
+    <div class="part__header">
+      <div class="part__name">${label}</div>
+      <label class="part__mute" title="Mute this voice">
         <input data-role="mute" type="checkbox" ${voice.muted ? "checked" : ""} />
+        <span>Mute</span>
       </label>
+    </div>
+    <div class="part__controls">
       <label class="field">
         <span>Volume</span>
         <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${voice.volume}" title="${Math.round(voice.volume * 100)}%" />

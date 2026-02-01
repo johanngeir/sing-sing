@@ -130,7 +130,7 @@ body {
 
 .app__body {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 380px 1fr;
   gap: 20px;
   align-items: start;
 }
@@ -247,6 +247,13 @@ h2 {
   cursor: not-allowed;
 }
 
+.tempo-group {
+  border: 1px solid #e0d7ca;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(to bottom, #faf7f2, #f6f2ea);
+}
+
 .tempo {
   display: grid;
   grid-template-columns: 100px 1fr 40px;
@@ -269,8 +276,14 @@ h2 {
 .tempo-presets {
   display: flex;
   gap: 6px;
-  margin-top: 14px;
-  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.tempo-presets .btn--small {
+  flex: 1;
+  padding: 6px 8px;
+  min-width: 0;
+  text-align: center;
 }
 
 .btn--small {
@@ -311,6 +324,26 @@ h2 {
 .part__name {
   font-weight: 600;
   font-size: 1rem;
+}
+
+.part__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.part__mute {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #6b6152;
+  cursor: pointer;
+}
+
+.part__mute input {
+  cursor: pointer;
+  accent-color: #5c4d38;
 }
 
 .part__controls {
@@ -523,7 +556,7 @@ input[type="range"]::-moz-range-thumb {
 
   .sidebar .panel {
     flex: 1;
-    min-width: 280px;
+    min-width: 340px;
   }
 
   .timeline {
