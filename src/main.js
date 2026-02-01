@@ -218,11 +218,10 @@ const INSTRUMENTS = {
 };
 
 const elements = {
-  status: document.getElementById("status"),
-  scoreSelect: document.getElementById("scoreSelect"),
-  userVoice: document.getElementById("userVoice"),
-  instrumentSelect: document.getElementById("instrumentSelect"),
-  panInvert: document.getElementById("panInvert"),
+   status: document.getElementById("status"),
+   scoreSelect: document.getElementById("scoreSelect"),
+   userVoice: document.getElementById("userVoice"),
+   panInvert: document.getElementById("panInvert"),
   playerBar: document.getElementById("playerBar"),
   playPauseButton: document.getElementById("playPauseButton"),
   playerStopButton: document.getElementById("playerStopButton"),
@@ -1671,82 +1670,14 @@ elements.userVoice.addEventListener("change", (event) => {
 });
 
 elements.panInvert.addEventListener("change", (event) => {
-  state.panInverted = event.target.checked;
-  localStorage.setItem("panInverted", state.panInverted);
-  applyUserVoiceMix();
-});
-
-elements.instrumentSelect.addEventListener("change", async (event) => {
-  const newInstrument = event.target.value;
-  if (newInstrument === state.instrument) return;
-  
-  state.instrument = newInstrument;
-  localStorage.setItem("instrument", newInstrument);
-  
-  if (state.scoreReady && state.voices.length > 0) {
-    const wasPlaying = state.isPlaying;
-    const playbackPosition = Tone.Transport.seconds;
-    if (wasPlaying) {
-      stopPlayback();
-    }
-    
-    setStatus(`Switching to ${INSTRUMENTS[newInstrument].name}...`);
-    
-    const savedSettings = state.voices.map(v => ({
-      name: { full: v.name, short: v.shortName },
-      volume: v.volume,
-      pan: v.pan,
-      muted: v.muted
-    }));
-    
-    for (const voice of state.voices) {
-      voice.sampler.dispose();
-      voice.gain.dispose();
-      voice.panner.dispose();
-    }
-    
-    state.voices = savedSettings.map((saved, i) => {
-      const voice = createVoiceState(i, saved.name);
-      voice.volume = saved.volume;
-      voice.pan = saved.pan;
-      voice.muted = saved.muted;
-      return voice;
-    });
-    
-    await Promise.all(state.voices.map(v => 
-      new Promise(resolve => {
-        if (v.sampler.loaded) {
-          resolve();
-        } else {
-          const checkLoaded = setInterval(() => {
-            if (v.sampler.loaded) {
-              clearInterval(checkLoaded);
-              resolve();
-            }
-          }, 50);
-        }
-      })
-    ));
-    
-    for (const voice of state.voices) {
-      applyVoiceSettings(voice);
-    }
-    
-    renderVoices();
-    setStatus(`Ready - ${INSTRUMENTS[newInstrument].name}`);
-    
-    if (wasPlaying) {
-      startPlayback(playbackPosition).catch((error) => {
-        setStatus(`Playback error: ${error.message}`);
-      });
-    }
-  }
+   state.panInverted = event.target.checked;
+   localStorage.setItem("panInverted", state.panInverted);
+   applyUserVoiceMix();
 });
 
 function initUserVoice() {
-  elements.userVoice.value = state.userVoice;
-  elements.instrumentSelect.value = state.instrument;
-  elements.panInvert.checked = state.panInverted;
+   elements.userVoice.value = state.userVoice;
+   elements.panInvert.checked = state.panInverted;
 }
 
 function populateScoreSelect() {
