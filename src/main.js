@@ -434,11 +434,11 @@ function renderVoices() {
         </label>
         <label class="field">
           <span>Volume</span>
-          <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${voice.volume}" />
+          <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${voice.volume}" title="${Math.round(voice.volume * 100)}%" />
         </label>
         <label class="field">
           <span>Pan</span>
-          <input data-role="pan" type="range" min="-1" max="1" step="0.01" value="${voice.pan}" />
+          <input data-role="pan" type="range" min="-1" max="1" step="0.01" value="${voice.pan}" title="${formatPan(voice.pan)}" />
         </label>
       </div>
     `;
@@ -454,17 +454,25 @@ function renderVoices() {
 
     volumeInput.addEventListener("input", (event) => {
       voice.volume = Number(event.target.value);
+      volumeInput.title = `${Math.round(voice.volume * 100)}%`;
       applyVoiceSettings(voice);
     });
 
     panInput.addEventListener("input", (event) => {
       voice.pan = Number(event.target.value);
+      panInput.title = formatPan(voice.pan);
       applyVoiceSettings(voice);
     });
 
     elements.parts.appendChild(row);
     applyVoiceSettings(voice);
   });
+}
+
+function formatPan(pan) {
+  if (Math.abs(pan) < 0.05) return "Center";
+  const pct = Math.round(Math.abs(pan) * 100);
+  return pan < 0 ? `${pct}% L` : `${pct}% R`;
 }
 
 function formatNoteShort(midi, durationBeats) {
