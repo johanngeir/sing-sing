@@ -21,20 +21,6 @@
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
               </svg>
             </button>
-            <label class="my-voice" title="Select the voice part you're singing">
-              <span>My voice:</span>
-              <select id="userVoice">
-                <option value="S1">Soprano 1</option>
-                <option value="S2">Soprano 2</option>
-                <option value="A1">Alto 1</option>
-                <option value="A2">Alto 2</option>
-                <option value="T1">Tenor 1</option>
-                <option value="T2">Tenor 2</option>
-                <option value="B1">Bass 1</option>
-                <option value="B2">Bass 2</option>
-                <option value="B3">Bass 3</option>
-              </select>
-            </label>
              <label class="pan-invert" title="Swap your voice to left ear, others to right">
                <input type="checkbox" id="panInvert" />
                <span>Flip L/R</span>
@@ -127,6 +113,25 @@
           <button id="closeSettings" class="modal__close" aria-label="Close settings">&times;</button>
         </div>
         <div class="modal__body">
+          <div class="setting">
+            <div class="setting__info">
+              <span class="setting__label">My voice</span>
+              <span class="setting__description">Select the voice part you're singing</span>
+            </div>
+            <div class="setting__control">
+              <select id="userVoice" class="setting__select">
+                <option value="S1">Soprano 1</option>
+                <option value="S2">Soprano 2</option>
+                <option value="A1">Alto 1</option>
+                <option value="A2">Alto 2</option>
+                <option value="T1">Tenor 1</option>
+                <option value="T2">Tenor 2</option>
+                <option value="B1">Bass 1</option>
+                <option value="B2">Bass 2</option>
+                <option value="B3">Bass 3</option>
+              </select>
+            </div>
+          </div>
           <div class="setting">
             <div class="setting__info">
               <span class="setting__label">Theme</span>

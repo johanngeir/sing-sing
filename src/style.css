@@ -1186,6 +1186,21 @@ body {
   color: var(--text-muted);
 }
 
+.setting__select {
+  padding: 8px 12px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.setting__select:hover {
+  border-color: var(--input-border-hover);
+}
+
 .setting--danger {
   background: var(--danger-bg);
   margin: 16px -24px -24px;
