@@ -20,6 +20,7 @@ const elements = {
   stopButton: document.getElementById("stopButton"),
   tempo: document.getElementById("tempo"),
   tempoValue: document.getElementById("tempoValue"),
+  tempoPresets: document.getElementById("tempoPresets"),
   parts: document.getElementById("parts"),
   timeline: document.getElementById("timeline"),
   downloadJson: document.getElementById("downloadJson"),
@@ -28,6 +29,7 @@ const elements = {
 
 const state = {
   tempo: 120,
+  originalTempo: 120,
   parts: [],
   timeline: [],
   timelineRows: [],
@@ -679,10 +681,21 @@ function stopPlayback() {
 
 function setTempo(value) {
   state.tempo = value;
+  elements.tempo.value = String(value);
   elements.tempoValue.textContent = String(value);
+  updateTempoPresetButtons();
   if (state.isPlaying) {
     stopPlayback();
     startPlayback();
+  }
+}
+
+function updateTempoPresetButtons() {
+  const pct = Math.round((state.tempo / state.originalTempo) * 100);
+  const buttons = elements.tempoPresets.querySelectorAll("button");
+  for (const btn of buttons) {
+    const btnPct = Number(btn.dataset.tempoPct);
+    btn.classList.toggle("btn--active", btnPct === pct);
   }
 }
 
@@ -695,12 +708,14 @@ async function loadScore() {
   const xmlText = await response.text();
   const parsed = parseMusicXML(xmlText);
 
-  state.tempo = Math.round(parsed.tempo);
+  state.originalTempo = Math.round(parsed.tempo);
+  state.tempo = state.originalTempo;
   state.scoreTitle = parsed.title;
   state.timeline = parsed.timeline;
   state.parts = parsed.parts;
   elements.tempo.value = String(state.tempo);
   elements.tempoValue.textContent = String(state.tempo);
+  updateTempoPresetButtons();
 
   assignVoicesToNotes();
   const voiceNames = analyzeVoiceNames();
@@ -732,6 +747,15 @@ elements.stopButton.addEventListener("click", () => {
 elements.tempo.addEventListener("input", (event) => {
   const value = Number(event.target.value);
   setTempo(value);
+  renderTimeline();
+});
+
+elements.tempoPresets.addEventListener("click", (event) => {
+  const btn = event.target.closest("button[data-tempo-pct]");
+  if (!btn) return;
+  const pct = Number(btn.dataset.tempoPct);
+  const newTempo = Math.round(state.originalTempo * (pct / 100));
+  setTempo(newTempo);
   renderTimeline();
 });
 

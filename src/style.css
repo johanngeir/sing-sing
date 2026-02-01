@@ -118,6 +118,24 @@ h1 {
   gap: 12px;
 }
 
+.tempo-presets {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.btn--small {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn--active {
+  background: #1d1913;
+  color: #f7f2ea;
+  border-color: #1d1913;
+}
+
 .tempo input {
   width: 100%;
 }
