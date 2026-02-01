@@ -477,8 +477,7 @@ function formatPan(pan) {
   return pan < 0 ? `${pct}% L` : `${pct}% R`;
 }
 
-function formatNoteShort(midi, durationBeats) {
-  const noteName = midiToNoteName(midi);
+function formatDuration(durationBeats) {
   const durationMap = {
     4: "/1",
     3: "/2.",
@@ -491,8 +490,16 @@ function formatNoteShort(midi, durationBeats) {
     0.25: "/16",
     0.125: "/32"
   };
-  const dur = durationMap[durationBeats] || `/${(4 / durationBeats).toFixed(1)}`;
-  return `${noteName}${dur}`;
+  return durationMap[durationBeats] || `/${(4 / durationBeats).toFixed(1)}`;
+}
+
+function formatNoteShort(midi, durationBeats) {
+  const noteName = midiToNoteName(midi);
+  return `${noteName}${formatDuration(durationBeats)}`;
+}
+
+function formatRestShort(durationBeats) {
+  return `R${formatDuration(durationBeats)}`;
 }
 
 function assignVoicesToNotes() {
@@ -531,6 +538,16 @@ function assignVoicesToNotes() {
   }
 
   state.voiceCount = voiceEndTimes.length;
+
+  const rests = state.timeline.filter((e) => e.type === "rest");
+  for (const rest of rests) {
+    const matchingNotes = notes.filter(
+      (n) => n.partIndex === rest.partIndex && n.voice === rest.voice && n.staff === rest.staff
+    );
+    if (matchingNotes.length > 0 && matchingNotes[0].voiceIndex !== undefined) {
+      rest.voiceIndex = matchingNotes[0].voiceIndex;
+    }
+  }
 }
 
 function analyzeVoiceNames() {
@@ -583,16 +600,19 @@ function analyzeVoiceNames() {
 }
 
 function buildTimelineRows() {
-  const notes = state.timeline.filter((e) => e.type === "note" && e.midi !== undefined);
-  if (notes.length === 0) return { rows: [], voiceCount: 0 };
+  const events = state.timeline.filter((e) => 
+    (e.type === "note" && e.midi !== undefined) || e.type === "rest"
+  );
+  if (events.length === 0) return { rows: [], voiceCount: 0 };
 
   const grouped = new Map();
-  for (const entry of notes) {
+  for (const entry of events) {
+    if (entry.voiceIndex === undefined) continue;
     const key = entry.timeBeats.toFixed(4);
     if (!grouped.has(key)) {
-      grouped.set(key, { timeBeats: entry.timeBeats, measure: entry.measure, notes: [] });
+      grouped.set(key, { timeBeats: entry.timeBeats, measure: entry.measure, events: [] });
     }
-    grouped.get(key).notes.push(entry);
+    grouped.get(key).events.push(entry);
   }
 
   const rows = Array.from(grouped.values())
@@ -600,13 +620,22 @@ function buildTimelineRows() {
     .map((group) => {
       const voiceColumns = new Array(state.voiceCount).fill(null);
 
-      for (const note of group.notes) {
-        if (note.voiceIndex !== undefined) {
-          voiceColumns[note.voiceIndex] = {
-            midi: note.midi,
-            durationBeats: note.durationBeats,
-            display: formatNoteShort(note.midi, note.durationBeats)
-          };
+      for (const event of group.events) {
+        if (event.voiceIndex !== undefined) {
+          if (event.type === "note") {
+            voiceColumns[event.voiceIndex] = {
+              type: "note",
+              midi: event.midi,
+              durationBeats: event.durationBeats,
+              display: formatNoteShort(event.midi, event.durationBeats)
+            };
+          } else if (event.type === "rest") {
+            voiceColumns[event.voiceIndex] = {
+              type: "rest",
+              durationBeats: event.durationBeats,
+              display: formatRestShort(event.durationBeats)
+            };
+          }
         }
       }
 
@@ -643,7 +672,11 @@ function renderTimeline() {
   const rowsHtml = rows
     .map((entry, index) => {
       const voiceCells = entry.voiceColumns
-        .map((cell) => `<span class="voice-cell">${cell ? cell.display : ""}</span>`)
+        .map((cell) => {
+          if (!cell) return `<span class="voice-cell"></span>`;
+          const cellClass = cell.type === "rest" ? "voice-cell voice-cell--rest" : "voice-cell";
+          return `<span class="${cellClass}">${cell.display}</span>`;
+        })
         .join("");
       return `
         <div class="timeline__row" data-row-index="${index}" data-time-beats="${entry.timeBeats}" style="grid-template-columns: 4rem 4rem 2rem repeat(${voiceCount}, 1fr);">
@@ -876,6 +909,23 @@ elements.downloadCsv.addEventListener("click", () => {
     lines.push(line.join(","));
   }
   downloadFile("timeline.csv", `${lines.join("\n")}\n`);
+});
+
+elements.timeline.addEventListener("click", (event) => {
+  const row = event.target.closest(".timeline__row:not(.timeline__row--header)");
+  if (!row) return;
+  
+  const timeBeats = parseFloat(row.dataset.timeBeats);
+  if (!Number.isFinite(timeBeats)) return;
+  
+  const timeSeconds = (timeBeats * 60) / state.tempo;
+  Tone.Transport.seconds = timeSeconds;
+  
+  if (!state.isPlaying) {
+    startPlayback().catch((error) => {
+      setStatus(`Playback error: ${error.message}`);
+    });
+  }
 });
 
 elements.fileInput.addEventListener("change", (event) => {

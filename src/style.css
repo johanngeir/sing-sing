@@ -280,6 +280,11 @@ h1 {
   gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid #e8e2d8;
+  cursor: pointer;
+}
+
+.timeline__row:not(.timeline__row--header):hover {
+  background: #f0ebe0;
 }
 
 .timeline__row--header {
@@ -301,6 +306,11 @@ h1 {
   font-family: "Spectral", "Georgia", serif;
   text-align: center;
   min-width: 60px;
+}
+
+.voice-cell--rest {
+  color: #9a9080;
+  font-style: italic;
 }
 
 .timeline__row--active {
