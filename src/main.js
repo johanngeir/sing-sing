@@ -1,5 +1,13 @@
 import * as Tone from "tone";
 
+const IS_DEV = import.meta.env.DEV;
+
+if (!IS_DEV) {
+  document.querySelectorAll("[data-dev]").forEach(el => {
+    el.remove();
+  });
+}
+
 const SCORES = [
   { name: "Færðu mér ljósið", url: "/scores/faerdu-mer-ljosid.musicxml", voices: "SATBB" },
   { name: "Fjallið Skjaldbreiður", url: "/scores/fjallid-skjaldbreidur.musicxml", voices: "TTBB" },
@@ -97,7 +105,6 @@ function applyUserVoiceMix() {
   renderVoices();
 }
 
-const SAMPLE_BASE = "/salamander/samples/";
 const SAMPLE_URLS_V8 = {
   A3: "A3v8.wav",
   C3: "C3v8.wav",
@@ -121,11 +128,86 @@ const SAMPLE_URLS_V12 = {
   C5: "C5v12.wav"
 };
 
+const CDN_BASE = "https://nbrosowsky.github.io/tonejs-instruments/samples/";
+
+const INSTRUMENT_SOURCES = {
+  salamander: {
+    name: "Salamander Grand Piano",
+    author: "Alexander Holm",
+    license: "CC BY 3.0",
+    url: "https://sfzinstruments.github.io/pianos/salamander/"
+  },
+  tonejsInstruments: {
+    name: "tonejs-instruments",
+    author: "Nick Brosowsky",
+    license: "MIT",
+    url: "https://github.com/nbrosowsky/tonejs-instruments"
+  }
+};
+
+const INSTRUMENTS = {
+  piano: {
+    name: "Piano",
+    source: INSTRUMENT_SOURCES.salamander,
+    baseUrl: "/salamander/samples/",
+    urls: SAMPLE_URLS_V8,
+    release: 1
+  },
+  violin: {
+    name: "Violin",
+    source: INSTRUMENT_SOURCES.tonejsInstruments,
+    baseUrl: `${CDN_BASE}violin/`,
+    urls: {
+      A3: "A3.mp3", A4: "A4.mp3", A5: "A5.mp3", A6: "A6.mp3",
+      C4: "C4.mp3", C5: "C5.mp3", C6: "C6.mp3", C7: "C7.mp3",
+      E4: "E4.mp3", E5: "E5.mp3", E6: "E6.mp3",
+      G3: "G3.mp3", G4: "G4.mp3", G5: "G5.mp3", G6: "G6.mp3"
+    },
+    release: 0.5
+  },
+  cello: {
+    name: "Cello",
+    source: INSTRUMENT_SOURCES.tonejsInstruments,
+    baseUrl: `${CDN_BASE}cello/`,
+    urls: {
+      A2: "A2.mp3", A3: "A3.mp3", A4: "A4.mp3",
+      C2: "C2.mp3", C3: "C3.mp3", C4: "C4.mp3", C5: "C5.mp3",
+      E2: "E2.mp3", E3: "E3.mp3", E4: "E4.mp3",
+      G2: "G2.mp3", G3: "G3.mp3", G4: "G4.mp3"
+    },
+    release: 0.8
+  },
+  organ: {
+    name: "Organ",
+    source: INSTRUMENT_SOURCES.tonejsInstruments,
+    baseUrl: `${CDN_BASE}organ/`,
+    urls: {
+      A1: "A1.mp3", A2: "A2.mp3", A3: "A3.mp3", A4: "A4.mp3", A5: "A5.mp3",
+      C1: "C1.mp3", C2: "C2.mp3", C3: "C3.mp3", C4: "C4.mp3", C5: "C5.mp3", C6: "C6.mp3",
+      "D#1": "Ds1.mp3", "D#2": "Ds2.mp3", "D#3": "Ds3.mp3", "D#4": "Ds4.mp3", "D#5": "Ds5.mp3",
+      "F#1": "Fs1.mp3", "F#2": "Fs2.mp3", "F#3": "Fs3.mp3", "F#4": "Fs4.mp3", "F#5": "Fs5.mp3"
+    },
+    release: 0.3
+  },
+  saxophone: {
+    name: "Saxophone",
+    source: INSTRUMENT_SOURCES.tonejsInstruments,
+    baseUrl: `${CDN_BASE}saxophone/`,
+    urls: {
+      A3: "A3.mp3", A4: "A4.mp3", A5: "A5.mp3",
+      C4: "C4.mp3", C5: "C5.mp3",
+      "D#3": "Ds3.mp3", "D#4": "Ds4.mp3", "D#5": "Ds5.mp3",
+      "F#3": "Fs3.mp3", "F#4": "Fs4.mp3", "F#5": "Fs5.mp3"
+    },
+    release: 0.4
+  }
+};
+
 const elements = {
   status: document.getElementById("status"),
   scoreSelect: document.getElementById("scoreSelect"),
-  fileInput: document.getElementById("fileInput"),
   userVoice: document.getElementById("userVoice"),
+  instrumentSelect: document.getElementById("instrumentSelect"),
   panInvert: document.getElementById("panInvert"),
   playButton: document.getElementById("playButton"),
   stopButton: document.getElementById("stopButton"),
@@ -133,27 +215,34 @@ const elements = {
   tempoValue: document.getElementById("tempoValue"),
   tempoPresets: document.getElementById("tempoPresets"),
   parts: document.getElementById("parts"),
-  timeline: document.getElementById("timeline"),
-  downloadJson: document.getElementById("downloadJson"),
-  downloadCsv: document.getElementById("downloadCsv")
+  timeline: IS_DEV ? document.getElementById("timeline") : null,
+  downloadJson: IS_DEV ? document.getElementById("downloadJson") : null,
+  downloadCsv: IS_DEV ? document.getElementById("downloadCsv") : null
 };
 
 const state = {
-  currentScore: null,
-  userVoice: localStorage.getItem("userVoice") || "T1",
-  panInverted: localStorage.getItem("panInverted") === "true",
-  tempo: 120,
-  originalTempo: 120,
-  parts: [],
-  timeline: [],
-  timelineRows: [],
-  voiceCount: 0,
-  voices: [],
-  isPlaying: false,
-  scoreTitle: "",
-  scoreReady: false,
-  playbackRAF: null,
-  advancedVoiceMode: false
+   currentScore: null,
+   userVoice: localStorage.getItem("userVoice") || "T1",
+   instrument: localStorage.getItem("instrument") || "piano",
+   panInverted: localStorage.getItem("panInverted") === "true",
+   tempo: 120,
+   originalTempo: 120,
+   parts: [],
+   timeline: [],
+   timelineRows: [],
+   voiceCount: 0,
+   voices: [],
+   isPlaying: false,
+   scoreTitle: "",
+   scoreReady: false,
+   playbackRAF: null,
+   advancedVoiceMode: false,
+   autoScrollPaused: false,
+   autoScrollResumeTimeout: null,
+   loopA: null,
+   loopB: null,
+   loopASeconds: null,
+   loopBSeconds: null
 };
 
 function setStatus(message) {
@@ -417,11 +506,12 @@ function parseMusicXML(xmlText) {
   return { tempo, title, parts, timeline };
 }
 
-function createVoiceState(voiceIndex, voiceName, sampleUrls = SAMPLE_URLS_V8) {
+function createVoiceState(voiceIndex, voiceName) {
+  const instrument = INSTRUMENTS[state.instrument] || INSTRUMENTS.piano;
   const sampler = new Tone.Sampler({
-    urls: sampleUrls,
-    baseUrl: SAMPLE_BASE,
-    release: 1
+    urls: instrument.urls,
+    baseUrl: instrument.baseUrl,
+    release: instrument.release
   });
   const gain = new Tone.Gain(0.9);
   const panner = new Tone.Panner(0);
@@ -442,8 +532,9 @@ function createVoiceState(voiceIndex, voiceName, sampleUrls = SAMPLE_URLS_V8) {
 }
 
 function applyVoiceSettings(voice) {
-  voice.gain.gain.value = voice.muted ? 0 : voice.volume;
-  voice.panner.pan.value = voice.pan;
+  const targetGain = voice.muted ? 0 : voice.volume;
+  voice.gain.gain.rampTo(targetGain, 0.05);
+  voice.panner.pan.rampTo(voice.pan, 0.05);
 }
 
 function renderVoices() {
@@ -453,23 +544,24 @@ function renderVoices() {
   
   const mappedVoice = mapUserVoiceToScore(state.userVoice, state.voices);
   const userVoice = state.voices.find(v => v.shortName === mappedVoice);
-  const otherVoices = state.voices.filter(v => v.shortName !== mappedVoice);
+  const otherVoiceShortNames = state.voices.filter(v => v.shortName !== mappedVoice).map(v => v.shortName);
   
   if (state.advancedVoiceMode) {
     renderAdvancedVoiceControls();
   } else {
-    renderSimpleVoiceControls(userVoice, otherVoices);
+    renderSimpleVoiceControls(userVoice, otherVoiceShortNames);
   }
 }
 
-function renderSimpleVoiceControls(userVoice, otherVoices) {
+function renderSimpleVoiceControls(userVoice, otherVoiceShortNames) {
   const container = elements.parts;
   
   if (userVoice) {
-    container.appendChild(createVoiceControlRow(userVoice, "My Voice", false));
+    container.appendChild(createVoiceControlRow(userVoice.shortName, "My Voice", false));
   }
   
-  if (otherVoices.length > 0) {
+  if (otherVoiceShortNames.length > 0) {
+    const otherVoices = state.voices.filter(v => otherVoiceShortNames.includes(v.shortName));
     const otherVolume = otherVoices[0].volume;
     const otherPan = otherVoices[0].pan;
     const otherMuted = otherVoices.every(v => v.muted);
@@ -501,7 +593,9 @@ function renderSimpleVoiceControls(userVoice, otherVoices) {
     const panInput = row.querySelector('[data-role="pan"]');
     
     muteInput.addEventListener("change", (event) => {
-      for (const voice of otherVoices) {
+      for (const shortName of otherVoiceShortNames) {
+        const voice = state.voices.find(v => v.shortName === shortName);
+        if (!voice) continue;
         voice.muted = event.target.checked;
         applyVoiceSettings(voice);
       }
@@ -510,7 +604,9 @@ function renderSimpleVoiceControls(userVoice, otherVoices) {
     volumeInput.addEventListener("input", (event) => {
       const value = Number(event.target.value);
       volumeInput.title = `${Math.round(value * 100)}%`;
-      for (const voice of otherVoices) {
+      for (const shortName of otherVoiceShortNames) {
+        const voice = state.voices.find(v => v.shortName === shortName);
+        if (!voice) continue;
         voice.volume = value;
         applyVoiceSettings(voice);
       }
@@ -519,7 +615,9 @@ function renderSimpleVoiceControls(userVoice, otherVoices) {
     panInput.addEventListener("input", (event) => {
       const value = Number(event.target.value);
       panInput.title = formatPan(value);
-      for (const voice of otherVoices) {
+      for (const shortName of otherVoiceShortNames) {
+        const voice = state.voices.find(v => v.shortName === shortName);
+        if (!voice) continue;
         voice.pan = value;
         applyVoiceSettings(voice);
       }
@@ -530,7 +628,7 @@ function renderSimpleVoiceControls(userVoice, otherVoices) {
   
   const toggleBtn = document.createElement("button");
   toggleBtn.className = "btn btn--small voice-mode-toggle";
-  toggleBtn.textContent = "Show all voices";
+  toggleBtn.textContent = "Advanced";
   toggleBtn.title = "Show individual controls for each voice";
   toggleBtn.addEventListener("click", () => {
     state.advancedVoiceMode = true;
@@ -543,7 +641,7 @@ function renderAdvancedVoiceControls() {
   const container = elements.parts;
   
   for (const voice of state.voices) {
-    container.appendChild(createVoiceControlRow(voice, voice.name, true));
+    container.appendChild(createVoiceControlRow(voice.shortName, voice.name, true));
   }
   
   const toggleBtn = document.createElement("button");
@@ -557,9 +655,11 @@ function renderAdvancedVoiceControls() {
   container.appendChild(toggleBtn);
 }
 
-function createVoiceControlRow(voice, label, isAdvanced) {
+function createVoiceControlRow(voiceShortName, label, isAdvanced) {
+  const voice = state.voices.find(v => v.shortName === voiceShortName);
   const row = document.createElement("div");
   row.className = "part";
+  row.dataset.voice = voiceShortName;
   if (!isAdvanced && label === "My Voice") {
     row.classList.add("part--user");
   }
@@ -589,20 +689,26 @@ function createVoiceControlRow(voice, label, isAdvanced) {
   const panInput = row.querySelector('[data-role="pan"]');
 
   muteInput.addEventListener("change", (event) => {
-    voice.muted = event.target.checked;
-    applyVoiceSettings(voice);
+    const v = state.voices.find(v => v.shortName === voiceShortName);
+    if (!v) return;
+    v.muted = event.target.checked;
+    applyVoiceSettings(v);
   });
 
   volumeInput.addEventListener("input", (event) => {
-    voice.volume = Number(event.target.value);
-    volumeInput.title = `${Math.round(voice.volume * 100)}%`;
-    applyVoiceSettings(voice);
+    const v = state.voices.find(v => v.shortName === voiceShortName);
+    if (!v) return;
+    v.volume = Number(event.target.value);
+    volumeInput.title = `${Math.round(v.volume * 100)}%`;
+    applyVoiceSettings(v);
   });
 
   panInput.addEventListener("input", (event) => {
-    voice.pan = Number(event.target.value);
-    panInput.title = formatPan(voice.pan);
-    applyVoiceSettings(voice);
+    const v = state.voices.find(v => v.shortName === voiceShortName);
+    if (!v) return;
+    v.pan = Number(event.target.value);
+    panInput.title = formatPan(v.pan);
+    applyVoiceSettings(v);
   });
 
   applyVoiceSettings(voice);
@@ -919,6 +1025,8 @@ function buildTimelineRows() {
 }
 
 function renderTimeline() {
+  if (!elements.timeline) return;
+  
   const { rows, voiceCount } = buildTimelineRows();
   state.timelineRows = rows;
 
@@ -969,6 +1077,11 @@ function updatePlaybackHighlight() {
     return;
   }
 
+  if (!elements.timeline) {
+    state.playbackRAF = requestAnimationFrame(updatePlaybackHighlight);
+    return;
+  }
+
   const currentSeconds = Tone.Transport.seconds;
   const currentBeats = (currentSeconds * state.tempo) / 60;
 
@@ -987,7 +1100,9 @@ function updatePlaybackHighlight() {
   rows.forEach((row, index) => {
     if (index === activeIndex) {
       row.classList.add("timeline__row--active");
-      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      if (!state.autoScrollPaused) {
+        row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
     } else {
       row.classList.remove("timeline__row--active");
     }
@@ -997,15 +1112,46 @@ function updatePlaybackHighlight() {
 }
 
 function downloadFile(filename, content) {
-  const blob = new Blob([content], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+   const blob = new Blob([content], { type: "text/plain" });
+   const url = URL.createObjectURL(blob);
+   const link = document.createElement("a");
+   link.href = url;
+   link.download = filename;
+   document.body.appendChild(link);
+   link.click();
+   link.remove();
+   URL.revokeObjectURL(url);
+}
+
+function getMeasureStartSeconds(measureNumber) {
+   for (const row of state.timelineRows) {
+      if (row.measure === measureNumber) {
+         return row.timeSeconds;
+      }
+   }
+   return null;
+}
+
+function getTotalDuration() {
+   if (state.timelineRows.length === 0) return 0;
+   const lastRow = state.timelineRows[state.timelineRows.length - 1];
+   return lastRow.timeSeconds + 2;
+}
+
+function getCurrentMeasure() {
+   const currentSeconds = Tone.Transport.seconds;
+   for (let i = state.timelineRows.length - 1; i >= 0; i--) {
+      if (state.timelineRows[i].timeSeconds <= currentSeconds) {
+         return state.timelineRows[i].measure;
+      }
+   }
+   return 0;
+}
+
+function getTotalMeasures() {
+   if (state.timelineRows.length === 0) return 0;
+   const lastRow = state.timelineRows[state.timelineRows.length - 1];
+   return lastRow.measure + 1;
 }
 
 function buildSchedule() {
@@ -1027,11 +1173,12 @@ function buildSchedule() {
   }
 }
 
-async function startPlayback() {
+async function startPlayback(fromSeconds = 0) {
   if (!state.scoreReady || state.isPlaying) return;
   await Tone.start();
   state.isPlaying = true;
   buildSchedule();
+  Tone.Transport.seconds = fromSeconds;
   Tone.Transport.start();
   elements.playButton.disabled = true;
   elements.stopButton.disabled = false;
@@ -1049,9 +1196,11 @@ function stopPlayback() {
     cancelAnimationFrame(state.playbackRAF);
     state.playbackRAF = null;
   }
-  const rows = elements.timeline.querySelectorAll(".timeline__row--active");
-  for (const row of rows) {
-    row.classList.remove("timeline__row--active");
+  if (elements.timeline) {
+    const rows = elements.timeline.querySelectorAll(".timeline__row--active");
+    for (const row of rows) {
+      row.classList.remove("timeline__row--active");
+    }
   }
 }
 
@@ -1093,7 +1242,7 @@ function resetState() {
   state.scoreTitle = "";
   elements.playButton.disabled = true;
   elements.parts.innerHTML = "";
-  elements.timeline.innerHTML = "";
+  if (elements.timeline) elements.timeline.innerHTML = "";
 }
 
 async function loadScoreFromText(xmlText) {
@@ -1156,71 +1305,62 @@ elements.tempoPresets.addEventListener("click", (event) => {
   renderTimeline();
 });
 
-elements.downloadJson.addEventListener("click", () => {
-  const { rows, voiceCount } = buildTimelineRows();
-  downloadFile(
-    "timeline.json",
-    JSON.stringify({ tempo: state.tempo, voiceCount, events: rows }, null, 2)
-  );
-});
+if (elements.downloadJson) {
+  elements.downloadJson.addEventListener("click", () => {
+    const { rows, voiceCount } = buildTimelineRows();
+    downloadFile(
+      "timeline.json",
+      JSON.stringify({ tempo: state.tempo, voiceCount, events: rows }, null, 2)
+    );
+  });
+}
 
-elements.downloadCsv.addEventListener("click", () => {
-  const { rows, voiceCount } = buildTimelineRows();
-  const voiceHeaders = Array.from({ length: voiceCount }, (_, i) => `voice${i + 1}`);
-  const header = ["timeBeats", "timeSeconds", "measure", ...voiceHeaders];
-  const lines = [header.join(",")];
-  for (const entry of rows) {
-    const voiceCells = entry.voiceColumns.map((cell) => (cell ? cell.display : ""));
-    const line = [
-      entry.timeBeats.toFixed(2),
-      entry.timeSeconds.toFixed(2),
-      entry.measure + 1,
-      ...voiceCells
-    ];
-    lines.push(line.join(","));
-  }
-  downloadFile("timeline.csv", `${lines.join("\n")}\n`);
-});
+if (elements.downloadCsv) {
+  elements.downloadCsv.addEventListener("click", () => {
+    const { rows, voiceCount } = buildTimelineRows();
+    const voiceHeaders = Array.from({ length: voiceCount }, (_, i) => `voice${i + 1}`);
+    const header = ["timeBeats", "timeSeconds", "measure", ...voiceHeaders];
+    const lines = [header.join(",")];
+    for (const entry of rows) {
+      const voiceCells = entry.voiceColumns.map((cell) => (cell ? cell.display : ""));
+      const line = [
+        entry.timeBeats.toFixed(2),
+        entry.timeSeconds.toFixed(2),
+        entry.measure + 1,
+        ...voiceCells
+      ];
+      lines.push(line.join(","));
+    }
+    downloadFile("timeline.csv", `${lines.join("\n")}\n`);
+  });
+}
 
-elements.timeline.addEventListener("click", (event) => {
-  const row = event.target.closest(".timeline__row:not(.timeline__row--header)");
-  if (!row) return;
-  
-  const timeBeats = parseFloat(row.dataset.timeBeats);
-  if (!Number.isFinite(timeBeats)) return;
-  
-  const timeSeconds = (timeBeats * 60) / state.tempo;
-  Tone.Transport.seconds = timeSeconds;
-  
-  if (!state.isPlaying) {
-    startPlayback().catch((error) => {
-      setStatus(`Playback error: ${error.message}`);
-    });
-  }
-});
+if (elements.timeline) {
+  elements.timeline.addEventListener("click", (event) => {
+    const row = event.target.closest(".timeline__row:not(.timeline__row--header)");
+    if (!row) return;
+    
+    const timeBeats = parseFloat(row.dataset.timeBeats);
+    if (!Number.isFinite(timeBeats)) return;
+    
+    const timeSeconds = (timeBeats * 60) / state.tempo;
+    Tone.Transport.seconds = timeSeconds;
+    
+    if (!state.isPlaying) {
+      startPlayback().catch((error) => {
+        setStatus(`Playback error: ${error.message}`);
+      });
+    }
+  });
+}
 
-elements.fileInput.addEventListener("change", (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  state.currentScore = null;
-  
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    loadScoreFromText(e.target.result).catch((error) => {
-      setStatus(`Load error: ${error.message}`);
-    });
-  };
-  reader.onerror = () => {
-    setStatus("Error reading file");
-  };
-  reader.readAsText(file);
-});
+
 
 elements.scoreSelect.addEventListener("change", (event) => {
   const url = event.target.value;
   if (!url) return;
   
+  localStorage.setItem("selectedScore", url);
   state.currentScore = SCORES.find((s) => s.url === url) || null;
   
   fetch(url)
@@ -1244,8 +1384,76 @@ elements.panInvert.addEventListener("change", (event) => {
   applyUserVoiceMix();
 });
 
+elements.instrumentSelect.addEventListener("change", async (event) => {
+  const newInstrument = event.target.value;
+  if (newInstrument === state.instrument) return;
+  
+  state.instrument = newInstrument;
+  localStorage.setItem("instrument", newInstrument);
+  
+  if (state.scoreReady && state.voices.length > 0) {
+    const wasPlaying = state.isPlaying;
+    const playbackPosition = Tone.Transport.seconds;
+    if (wasPlaying) {
+      stopPlayback();
+    }
+    
+    setStatus(`Switching to ${INSTRUMENTS[newInstrument].name}...`);
+    
+    const savedSettings = state.voices.map(v => ({
+      name: { full: v.name, short: v.shortName },
+      volume: v.volume,
+      pan: v.pan,
+      muted: v.muted
+    }));
+    
+    for (const voice of state.voices) {
+      voice.sampler.dispose();
+      voice.gain.dispose();
+      voice.panner.dispose();
+    }
+    
+    state.voices = savedSettings.map((saved, i) => {
+      const voice = createVoiceState(i, saved.name);
+      voice.volume = saved.volume;
+      voice.pan = saved.pan;
+      voice.muted = saved.muted;
+      return voice;
+    });
+    
+    await Promise.all(state.voices.map(v => 
+      new Promise(resolve => {
+        if (v.sampler.loaded) {
+          resolve();
+        } else {
+          const checkLoaded = setInterval(() => {
+            if (v.sampler.loaded) {
+              clearInterval(checkLoaded);
+              resolve();
+            }
+          }, 50);
+        }
+      })
+    ));
+    
+    for (const voice of state.voices) {
+      applyVoiceSettings(voice);
+    }
+    
+    renderVoices();
+    setStatus(`Ready - ${INSTRUMENTS[newInstrument].name}`);
+    
+    if (wasPlaying) {
+      startPlayback(playbackPosition).catch((error) => {
+        setStatus(`Playback error: ${error.message}`);
+      });
+    }
+  }
+});
+
 function initUserVoice() {
   elements.userVoice.value = state.userVoice;
+  elements.instrumentSelect.value = state.instrument;
   elements.panInvert.checked = state.panInverted;
 }
 
@@ -1256,7 +1464,31 @@ function populateScoreSelect() {
     option.textContent = score.name;
     elements.scoreSelect.appendChild(option);
   }
+  
+  const savedScore = localStorage.getItem("selectedScore");
+  if (savedScore && SCORES.some(s => s.url === savedScore)) {
+    elements.scoreSelect.value = savedScore;
+    elements.scoreSelect.dispatchEvent(new Event("change"));
+  }
 }
 
 initUserVoice();
 populateScoreSelect();
+
+function pauseAutoScroll() {
+  state.autoScrollPaused = true;
+  if (state.autoScrollResumeTimeout) {
+    clearTimeout(state.autoScrollResumeTimeout);
+  }
+  state.autoScrollResumeTimeout = setTimeout(() => {
+    state.autoScrollPaused = false;
+  }, 3000);
+}
+
+if (elements.timeline) {
+  elements.timeline.addEventListener("wheel", pauseAutoScroll, { passive: true });
+  elements.timeline.addEventListener("touchstart", pauseAutoScroll, { passive: true });
+  elements.timeline.addEventListener("pointerdown", pauseAutoScroll);
+}
+document.addEventListener("wheel", pauseAutoScroll, { passive: true });
+document.addEventListener("touchmove", pauseAutoScroll, { passive: true });
