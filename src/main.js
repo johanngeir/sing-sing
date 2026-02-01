@@ -254,6 +254,7 @@ const state = {
    loopB: null,
    loopASeconds: null,
    loopBSeconds: null,
+   loopMode: "inactive",
    isSeeking: false
 };
 
@@ -1133,6 +1134,15 @@ function updatePlaybackHighlight() {
     const currentMeasure = getCurrentMeasure();
     elements.currentTime.textContent = `${formatTime(currentSeconds)} (M. ${currentMeasure + 1})`;
 
+    // Check loop bounds
+    if (state.loopMode === "active" && state.loopBSeconds !== null) {
+      if (currentSeconds >= state.loopBSeconds) {
+        Tone.Transport.seconds = state.loopASeconds;
+        state.playbackRAF = requestAnimationFrame(updatePlaybackHighlight);
+        return;
+      }
+    }
+
     state.playbackRAF = requestAnimationFrame(updatePlaybackHighlight);
 }
 
@@ -1274,6 +1284,19 @@ function resetState() {
   state.parts = [];
   state.scoreReady = false;
   state.scoreTitle = "";
+  
+  // Clear loop state
+  state.loopA = null;
+  state.loopB = null;
+  state.loopASeconds = null;
+  state.loopBSeconds = null;
+  state.loopMode = "inactive";
+  elements.loopMarkerA.hidden = true;
+  elements.loopMarkerB.hidden = true;
+  elements.loopDisplay.hidden = true;
+  elements.clearLoopButton.hidden = true;
+  elements.setLoopButton.textContent = "A/B";
+  
   elements.parts.innerHTML = "";
   if (elements.timeline) elements.timeline.innerHTML = "";
 }
@@ -1374,6 +1397,85 @@ elements.skipForwardButton.addEventListener("click", () => {
     Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure + 1);
   }
   // If at last measure, do nothing (stay at current position)
+});
+
+elements.setLoopButton.addEventListener("click", () => {
+  const currentMeasure = getCurrentMeasure();
+  
+  if (state.loopMode === "inactive") {
+    // First click - set A point
+    state.loopA = currentMeasure;
+    state.loopASeconds = getMeasureStartSeconds(currentMeasure);
+    state.loopMode = "settingB";
+    
+    // Show marker A
+    const totalDuration = getTotalDuration();
+    const percentage = (state.loopASeconds / totalDuration) * 100;
+    elements.loopMarkerA.style.left = `${percentage}%`;
+    elements.loopMarkerA.hidden = false;
+    
+    // Update button to indicate waiting for B
+    elements.setLoopButton.textContent = "B";
+    elements.setLoopButton.title = "Set loop end point";
+    
+  } else if (state.loopMode === "settingB") {
+    // Second click - set B point
+    let loopB = currentMeasure;
+    let loopBSeconds = getMeasureStartSeconds(currentMeasure);
+    
+    // Auto-swap if B < A
+    if (loopBSeconds < state.loopASeconds) {
+      const tempMeasure = state.loopA;
+      const tempSeconds = state.loopASeconds;
+      state.loopA = loopB;
+      state.loopASeconds = loopBSeconds;
+      loopB = tempMeasure;
+      loopBSeconds = tempSeconds;
+      
+      // Update marker A position
+      const totalDuration = getTotalDuration();
+      const percentageA = (state.loopASeconds / totalDuration) * 100;
+      elements.loopMarkerA.style.left = `${percentageA}%`;
+    }
+    
+    state.loopB = loopB;
+    state.loopBSeconds = loopBSeconds;
+    state.loopMode = "active";
+    
+    // Show marker B
+    const totalDuration = getTotalDuration();
+    const percentageB = (state.loopBSeconds / totalDuration) * 100;
+    elements.loopMarkerB.style.left = `${percentageB}%`;
+    elements.loopMarkerB.hidden = false;
+    
+    // Show loop display
+    elements.loopDisplay.textContent = `Loop: M.${state.loopA + 1} → M.${state.loopB + 1}`;
+    elements.loopDisplay.hidden = false;
+    elements.clearLoopButton.hidden = false;
+    
+    // Reset button
+    elements.setLoopButton.textContent = "A/B";
+    elements.setLoopButton.title = "Set loop point";
+  }
+});
+
+elements.clearLoopButton.addEventListener("click", () => {
+  // Reset state
+  state.loopA = null;
+  state.loopB = null;
+  state.loopASeconds = null;
+  state.loopBSeconds = null;
+  state.loopMode = "inactive";
+  
+  // Hide markers and display
+  elements.loopMarkerA.hidden = true;
+  elements.loopMarkerB.hidden = true;
+  elements.loopDisplay.hidden = true;
+  elements.clearLoopButton.hidden = true;
+  
+  // Reset button
+  elements.setLoopButton.textContent = "A/B";
+  elements.setLoopButton.title = "Set loop point";
 });
 
 elements.tempo.addEventListener("input", (event) => {
