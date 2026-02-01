@@ -17,36 +17,40 @@
         <div class="status" id="status">Loading score...</div>
       </header>
 
-      <section class="panel">
-        <div class="controls">
-          <button id="playButton" class="btn btn--primary" disabled>Play</button>
-          <button id="stopButton" class="btn" disabled>Stop</button>
-        </div>
-        <div class="tempo">
-          <label for="tempo">Tempo (BPM)</label>
-          <input id="tempo" type="range" min="40" max="200" value="120" />
-          <span id="tempoValue">120</span>
-        </div>
-      </section>
+      <div class="app__body">
+        <aside class="sidebar">
+          <section class="panel">
+            <div class="controls">
+              <button id="playButton" class="btn btn--primary" disabled>Play</button>
+              <button id="stopButton" class="btn" disabled>Stop</button>
+            </div>
+            <div class="tempo">
+              <label for="tempo">Tempo (BPM)</label>
+              <input id="tempo" type="range" min="40" max="200" value="120" />
+              <span id="tempoValue">120</span>
+            </div>
+          </section>
 
-      <section class="panel">
-        <div class="panel__header">
-          <h2>Parts</h2>
-          <p class="hint">Use pan sliders to place your voice left and others right.</p>
-        </div>
-        <div id="parts" class="parts"></div>
-      </section>
+          <section class="panel">
+            <div class="panel__header">
+              <h2>Voices</h2>
+            </div>
+            <p class="hint">Pan your voice left, others right.</p>
+            <div id="parts" class="parts"></div>
+          </section>
+        </aside>
 
-      <section class="panel">
-        <div class="panel__header">
-          <h2>Timeline</h2>
-          <div class="timeline__actions">
-            <button id="downloadJson" class="btn">Download JSON</button>
-            <button id="downloadCsv" class="btn">Download CSV</button>
+        <section class="panel panel--timeline">
+          <div class="panel__header">
+            <h2>Timeline</h2>
+            <div class="timeline__actions">
+              <button id="downloadJson" class="btn">JSON</button>
+              <button id="downloadCsv" class="btn">CSV</button>
+            </div>
           </div>
-        </div>
-        <div id="timeline" class="timeline"></div>
-      </section>
+          <div id="timeline" class="timeline"></div>
+        </section>
+      </div>
     </main>
 
     <script type="module" src="/src/main.js"></script>

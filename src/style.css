@@ -12,7 +12,7 @@ body {
 }
 
 .app {
-  max-width: 960px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 48px 24px 64px;
 }
@@ -24,6 +24,19 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 32px;
+}
+
+.app__body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .eyebrow {
@@ -152,10 +165,18 @@ h1 {
   font-size: 0.85rem;
 }
 
+.panel--timeline {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .timeline {
   overflow-x: auto;
-  max-height: 400px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 400px;
+  max-height: calc(100vh - 280px);
   font-size: 0.8rem;
 }
 
@@ -202,6 +223,26 @@ h1 {
   font-weight: 600;
 }
 
+@media (max-width: 900px) {
+  .app__body {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .sidebar .panel {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .timeline {
+    max-height: 400px;
+  }
+}
+
 @media (max-width: 720px) {
   .app {
     padding: 32px 16px 48px;
@@ -215,5 +256,13 @@ h1 {
   .tempo {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+
+  .sidebar {
+    flex-direction: column;
+  }
+
+  .sidebar .panel {
+    min-width: unset;
   }
 }
