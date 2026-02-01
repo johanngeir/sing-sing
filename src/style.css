@@ -1,13 +1,73 @@
 @import url("https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap");
 
+:root {
+  --bg-gradient-1: #f5f2ec;
+  --bg-gradient-2: #e9e4da;
+  --bg-gradient-3: #ddd7c9;
+  --text-primary: #1e1b16;
+  --text-secondary: #5c5348;
+  --text-muted: #8a7f72;
+  --panel-bg: #fdfbf7;
+  --panel-border: #d8d0c4;
+  --input-bg: linear-gradient(to bottom, #fff, #faf7f2);
+  --input-border: #c8c0b4;
+  --input-border-hover: #a69d8e;
+  --btn-bg: linear-gradient(to bottom, #f8f4ed, #f1ece3);
+  --btn-border: #b8ab9b;
+  --btn-primary-bg: linear-gradient(to bottom, #2d2820, #1d1913);
+  --btn-primary-text: #f7f2ea;
+  --part-bg: linear-gradient(to bottom, #f8f5ee, #f4f0e7);
+  --part-border: #e0d7ca;
+  --part-user-bg: linear-gradient(135deg, #ebe5d8 0%, #e3dccc 100%);
+  --part-user-border: #c4b9a6;
+  --slider-track: #d8d0c4;
+  --slider-thumb-bg: linear-gradient(to bottom, #fff, #f5f2ec);
+  --slider-thumb-border: #a69d8e;
+  --timeline-row-hover: #f5f1e8;
+  --timeline-row-active: linear-gradient(to right, #ebe3d0, #e5dcc8);
+  --danger-bg: #fee;
+  --danger-border: #e5c5c5;
+  --danger-text: #9a3333;
+}
+
+[data-theme="dark"] {
+  --bg-gradient-1: #1a1a1a;
+  --bg-gradient-2: #141414;
+  --bg-gradient-3: #0f0f0f;
+  --text-primary: #e8e4dc;
+  --text-secondary: #a8a095;
+  --text-muted: #6b6560;
+  --panel-bg: #1e1e1e;
+  --panel-border: #333;
+  --input-bg: linear-gradient(to bottom, #2a2a2a, #252525);
+  --input-border: #444;
+  --input-border-hover: #555;
+  --btn-bg: linear-gradient(to bottom, #333, #2a2a2a);
+  --btn-border: #444;
+  --btn-primary-bg: linear-gradient(to bottom, #e8e4dc, #d8d4cc);
+  --btn-primary-text: #1a1a1a;
+  --part-bg: linear-gradient(to bottom, #252525, #222);
+  --part-border: #3a3a3a;
+  --part-user-bg: linear-gradient(135deg, #2a2825 0%, #252320 100%);
+  --part-user-border: #3d3930;
+  --slider-track: #444;
+  --slider-thumb-bg: linear-gradient(to bottom, #555, #444);
+  --slider-thumb-border: #666;
+  --timeline-row-hover: #2a2a2a;
+  --timeline-row-active: linear-gradient(to right, #2d2a25, #28251f);
+  --danger-bg: #2a1f1f;
+  --danger-border: #4a3030;
+  --danger-text: #e87070;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: radial-gradient(ellipse at top, #f5f2ec 0%, #e9e4da 50%, #ddd7c9 100%);
-  color: #1e1b16;
+  background: radial-gradient(ellipse at top, var(--bg-gradient-1) 0%, var(--bg-gradient-2) 50%, var(--bg-gradient-3) 100%);
+  color: var(--text-primary);
   font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -986,4 +1046,250 @@ body {
   body {
     padding-bottom: 140px;
   }
+}
+
+/* Settings Button */
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-btn:hover {
+  background: var(--input-bg);
+  border-color: var(--input-border-hover);
+  transform: rotate(30deg);
+}
+
+.settings-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.modal__content {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.modal__header h2 {
+  margin: 0;
+}
+
+.modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.modal__close:hover {
+  background: var(--part-bg);
+  color: var(--text-primary);
+}
+
+.modal__body {
+  padding: 16px 24px 24px;
+}
+
+/* Settings */
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.setting:last-child {
+  border-bottom: none;
+}
+
+.setting__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting__label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.setting__description {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.setting--danger {
+  background: var(--danger-bg);
+  margin: 16px -24px -24px;
+  padding: 16px 24px;
+  border-radius: 0 0 20px 20px;
+  border-bottom: none;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  position: relative;
+  width: 64px;
+  height: 36px;
+  padding: 4px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--input-border-hover);
+}
+
+.theme-toggle__icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  transition: opacity 0.2s ease;
+}
+
+.theme-toggle__icon--light {
+  left: 8px;
+  opacity: 1;
+}
+
+.theme-toggle__icon--dark {
+  right: 8px;
+  opacity: 0.4;
+}
+
+[data-theme="dark"] .theme-toggle__icon--light {
+  opacity: 0.4;
+}
+
+[data-theme="dark"] .theme-toggle__icon--dark {
+  opacity: 1;
+}
+
+/* Toggle Switch */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle__slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--slider-track);
+  border-radius: 999px;
+  transition: 0.2s;
+}
+
+.toggle__slider::before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background: var(--slider-thumb-bg);
+  border: 1px solid var(--slider-thumb-border);
+  border-radius: 50%;
+  transition: 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.toggle input:checked + .toggle__slider {
+  background: #4a9;
+}
+
+.toggle input:checked + .toggle__slider::before {
+  transform: translateX(24px);
+}
+
+/* Danger Button */
+.btn--danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #fdd;
+  border-color: #d9a;
 }

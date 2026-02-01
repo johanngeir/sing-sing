@@ -241,7 +241,13 @@ const elements = {
   parts: document.getElementById("parts"),
   timeline: IS_DEV ? document.getElementById("timeline") : null,
   downloadJson: IS_DEV ? document.getElementById("downloadJson") : null,
-  downloadCsv: IS_DEV ? document.getElementById("downloadCsv") : null
+  downloadCsv: IS_DEV ? document.getElementById("downloadCsv") : null,
+  settingsButton: document.getElementById("settingsButton"),
+  settingsModal: document.getElementById("settingsModal"),
+  closeSettings: document.getElementById("closeSettings"),
+  themeToggle: document.getElementById("themeToggle"),
+  autoAdvance: document.getElementById("autoAdvance"),
+  resetSettings: document.getElementById("resetSettings")
 };
 
 const state = {
@@ -249,6 +255,8 @@ const state = {
    userVoice: localStorage.getItem("userVoice") || "T1",
    instrument: localStorage.getItem("instrument") || "piano",
    panInverted: localStorage.getItem("panInverted") === "true",
+   theme: localStorage.getItem("theme") || "light",
+   autoAdvance: localStorage.getItem("autoAdvance") === "true",
    tempo: 120,
    originalTempo: 120,
    parts: [],
@@ -1242,6 +1250,16 @@ function updatePlaybackHighlight() {
       }
     }
 
+    // Check if playback reached the end
+    const totalDuration = getTotalDuration();
+    if (currentSeconds >= totalDuration) {
+      stopPlayback();
+      if (state.autoAdvance) {
+        loadNextScore();
+      }
+      return;
+    }
+
     state.playbackRAF = requestAnimationFrame(updatePlaybackHighlight);
 }
 
@@ -1674,6 +1692,78 @@ elements.panInvert.addEventListener("change", (event) => {
    localStorage.setItem("panInverted", state.panInverted);
    applyUserVoiceMix();
 });
+
+function openSettings() {
+  elements.settingsModal.hidden = false;
+}
+
+function closeSettings() {
+  elements.settingsModal.hidden = true;
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  state.theme = theme;
+  localStorage.setItem("theme", theme);
+}
+
+function toggleTheme() {
+  applyTheme(state.theme === "light" ? "dark" : "light");
+}
+
+function resetAllSettings() {
+  if (!confirm("This will clear all your saved preferences. Continue?")) return;
+  
+  localStorage.clear();
+  
+  state.userVoice = "T1";
+  state.instrument = "piano";
+  state.panInverted = false;
+  state.theme = "light";
+  state.autoAdvance = false;
+  
+  applyTheme("light");
+  elements.userVoice.value = "T1";
+  elements.panInvert.checked = false;
+  elements.autoAdvance.checked = false;
+  
+  closeSettings();
+  setStatus("Settings reset to defaults");
+}
+
+function loadNextScore() {
+  const currentIndex = SCORES.findIndex(s => s.url === state.currentScore?.url);
+  const nextIndex = (currentIndex + 1) % SCORES.length;
+  const nextScore = SCORES[nextIndex];
+  
+  if (nextScore) {
+    elements.scoreSelect.value = nextScore.url;
+    elements.scoreSelect.dispatchEvent(new Event("change"));
+  }
+}
+
+elements.settingsButton.addEventListener("click", openSettings);
+elements.closeSettings.addEventListener("click", closeSettings);
+elements.settingsModal.querySelector(".modal__backdrop").addEventListener("click", closeSettings);
+elements.themeToggle.addEventListener("click", toggleTheme);
+elements.autoAdvance.addEventListener("change", (event) => {
+  state.autoAdvance = event.target.checked;
+  localStorage.setItem("autoAdvance", state.autoAdvance);
+});
+elements.resetSettings.addEventListener("click", resetAllSettings);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !elements.settingsModal.hidden) {
+    closeSettings();
+  }
+});
+
+function initSettings() {
+  applyTheme(state.theme);
+  elements.autoAdvance.checked = state.autoAdvance;
+}
+
+initSettings();
 
 function initUserVoice() {
    elements.userVoice.value = state.userVoice;

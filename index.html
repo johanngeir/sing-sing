@@ -15,6 +15,12 @@
         </div>
         <div class="header__right">
           <div class="score-controls">
+            <button id="settingsButton" class="settings-btn" title="Settings" aria-label="Open settings">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
             <label class="my-voice" title="Select the voice part you're singing">
               <span>My voice:</span>
               <select id="userVoice">
@@ -111,6 +117,52 @@
         <button id="clearLoopButton" class="player-bar__btn player-bar__btn--small" title="Clear loop" hidden>✕</button>
       </div>
     </footer>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" hidden>
+      <div class="modal__backdrop"></div>
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2>Settings</h2>
+          <button id="closeSettings" class="modal__close" aria-label="Close settings">&times;</button>
+        </div>
+        <div class="modal__body">
+          <div class="setting">
+            <div class="setting__info">
+              <span class="setting__label">Theme</span>
+              <span class="setting__description">Switch between light and dark mode</span>
+            </div>
+            <div class="setting__control">
+              <button id="themeToggle" class="theme-toggle" title="Toggle theme">
+                <span class="theme-toggle__icon theme-toggle__icon--light">☀️</span>
+                <span class="theme-toggle__icon theme-toggle__icon--dark">🌙</span>
+              </button>
+            </div>
+          </div>
+          <div class="setting">
+            <div class="setting__info">
+              <span class="setting__label">Auto-advance</span>
+              <span class="setting__description">Automatically load next score when current finishes</span>
+            </div>
+            <div class="setting__control">
+              <label class="toggle">
+                <input type="checkbox" id="autoAdvance" />
+                <span class="toggle__slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="setting setting--danger">
+            <div class="setting__info">
+              <span class="setting__label">Reset all settings</span>
+              <span class="setting__description">Clear all saved preferences and return to defaults</span>
+            </div>
+            <div class="setting__control">
+              <button id="resetSettings" class="btn btn--danger">Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
      <script type="module" src="/src/main.js"></script>
    </body>
