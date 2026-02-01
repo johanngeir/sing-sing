@@ -1269,36 +1269,39 @@ function updateTempoPresetButtons() {
 }
 
 function resetState() {
-  if (state.isPlaying) {
-    stopPlayback();
-  }
-  for (const voice of state.voices) {
-    if (voice.sampler) voice.sampler.dispose();
-    if (voice.gain) voice.gain.dispose();
-    if (voice.panner) voice.panner.dispose();
-  }
-  state.voices = [];
-  state.timeline = [];
-  state.timelineRows = [];
-  state.voiceCount = 0;
-  state.parts = [];
-  state.scoreReady = false;
-  state.scoreTitle = "";
-  
-  // Clear loop state
-  state.loopA = null;
-  state.loopB = null;
-  state.loopASeconds = null;
-  state.loopBSeconds = null;
-  state.loopMode = "inactive";
-  elements.loopMarkerA.hidden = true;
-  elements.loopMarkerB.hidden = true;
-  elements.loopDisplay.hidden = true;
-  elements.clearLoopButton.hidden = true;
-  elements.setLoopButton.textContent = "A/B";
-  
-  elements.parts.innerHTML = "";
-  if (elements.timeline) elements.timeline.innerHTML = "";
+   if (state.isPlaying) {
+     stopPlayback();
+   }
+   for (const voice of state.voices) {
+     if (voice.sampler) voice.sampler.dispose();
+     if (voice.gain) voice.gain.dispose();
+     if (voice.panner) voice.panner.dispose();
+   }
+   state.voices = [];
+   state.timeline = [];
+   state.timelineRows = [];
+   state.voiceCount = 0;
+   state.parts = [];
+   state.scoreReady = false;
+   state.scoreTitle = "";
+   
+   // Clear loop state
+   state.loopA = null;
+   state.loopB = null;
+   state.loopASeconds = null;
+   state.loopBSeconds = null;
+   state.loopMode = "inactive";
+   elements.loopMarkerA.hidden = true;
+   elements.loopMarkerB.hidden = true;
+   elements.loopDisplay.hidden = true;
+   elements.clearLoopButton.hidden = true;
+   elements.setLoopButton.textContent = "A/B";
+   
+   // Hide player bar
+   elements.playerBar.hidden = true;
+   
+   elements.parts.innerHTML = "";
+   if (elements.timeline) elements.timeline.innerHTML = "";
 }
 
 async function loadScoreFromText(xmlText) {
@@ -1330,15 +1333,16 @@ async function loadScoreFromText(xmlText) {
   state.voices = voiceStates;
   state.scoreReady = true;
 
-    applyUserVoiceMix();
-    renderTimeline();
-    const totalDuration = getTotalDuration();
-    elements.seekBar.max = totalDuration;
-    elements.seekBar.value = 0;
-    const totalMeasures = getTotalMeasures();
-    elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
-    elements.currentTime.textContent = "0:00 (M. 1)";
-    setStatus(`Loaded: ${parsed.title} (${state.voiceCount} voices)`);
+     applyUserVoiceMix();
+     renderTimeline();
+     const totalDuration = getTotalDuration();
+     elements.seekBar.max = totalDuration;
+     elements.seekBar.value = 0;
+     const totalMeasures = getTotalMeasures();
+     elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
+     elements.currentTime.textContent = "0:00 (M. 1)";
+     elements.playerBar.hidden = false;
+     setStatus(`Loaded: ${parsed.title} (${state.voiceCount} voices)`);
 }
 
 elements.playPauseButton.addEventListener("click", async () => {
