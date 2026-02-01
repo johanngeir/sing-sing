@@ -519,8 +519,8 @@ function parseMusicXML(xmlText) {
   return { tempo, title, parts, timeline };
 }
 
-function createVoiceState(voiceIndex, voiceName) {
-  const instrument = INSTRUMENTS[state.instrument] || INSTRUMENTS.piano;
+function createVoiceState(voiceIndex, voiceName, instrumentKey = "piano") {
+  const instrument = INSTRUMENTS[instrumentKey] || INSTRUMENTS.piano;
   const sampler = new Tone.Sampler({
     urls: instrument.urls,
     baseUrl: instrument.baseUrl,
@@ -540,7 +540,8 @@ function createVoiceState(voiceIndex, voiceName) {
     panner,
     volume: 0.9,
     pan: 0,
-    muted: false
+    muted: false,
+    instrument: instrumentKey
   };
 }
 
