@@ -678,6 +678,11 @@ function createVoiceControlRow(voiceShortName, label, isAdvanced) {
     row.classList.add("part--user");
   }
   
+  const instrumentOptions = Object.entries(INSTRUMENTS).map(([key, instrument]) => {
+    const selected = voice.instrument === key ? 'selected' : '';
+    return `<option value="${key}" ${selected}>${instrument.name}</option>`;
+  }).join('');
+
   row.innerHTML = `
     <div class="part__header">
       <div class="part__name">${label}</div>
@@ -687,6 +692,12 @@ function createVoiceControlRow(voiceShortName, label, isAdvanced) {
       </label>
     </div>
     <div class="part__controls">
+      <label class="field">
+        <span>Instrument</span>
+        <select data-role="instrument">
+          ${instrumentOptions}
+        </select>
+      </label>
       <label class="field">
         <span>Volume</span>
         <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${voice.volume}" title="${Math.round(voice.volume * 100)}%" />
@@ -699,6 +710,7 @@ function createVoiceControlRow(voiceShortName, label, isAdvanced) {
   `;
 
   const muteInput = row.querySelector('[data-role="mute"]');
+  const instrumentSelect = row.querySelector('[data-role="instrument"]');
   const volumeInput = row.querySelector('[data-role="volume"]');
   const panInput = row.querySelector('[data-role="pan"]');
 
@@ -706,6 +718,37 @@ function createVoiceControlRow(voiceShortName, label, isAdvanced) {
     const v = state.voices.find(v => v.shortName === voiceShortName);
     if (!v) return;
     v.muted = event.target.checked;
+    applyVoiceSettings(v);
+  });
+
+  instrumentSelect.addEventListener("change", (event) => {
+    const v = state.voices.find(v => v.shortName === voiceShortName);
+    if (!v) return;
+    
+    const newInstrumentKey = event.target.value;
+    if (newInstrumentKey === v.instrument) return;
+    
+    const currentVolume = v.volume;
+    const currentPan = v.pan;
+    const currentMuted = v.muted;
+    
+    v.sampler.dispose();
+    
+    const instrument = INSTRUMENTS[newInstrumentKey] || INSTRUMENTS.piano;
+    const newSampler = new Tone.Sampler({
+      urls: instrument.urls,
+      baseUrl: instrument.baseUrl,
+      release: instrument.release
+    });
+    
+    newSampler.connect(v.gain);
+    
+    v.sampler = newSampler;
+    v.instrument = newInstrumentKey;
+    
+    v.volume = currentVolume;
+    v.pan = currentPan;
+    v.muted = currentMuted;
     applyVoiceSettings(v);
   });
 
