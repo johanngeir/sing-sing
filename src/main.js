@@ -594,6 +594,9 @@ function renderSimpleVoiceControls(userVoice, otherVoiceShortNames) {
     const otherPan = otherVoices[0].pan;
     const otherMuted = otherVoices.every(v => v.muted);
     
+    const otherInstruments = otherVoices.map(v => v.instrument);
+    const allSame = otherInstruments.every(i => i === otherInstruments[0]);
+    
     const row = document.createElement("div");
     row.className = "part";
     row.innerHTML = `
@@ -606,6 +609,15 @@ function renderSimpleVoiceControls(userVoice, otherVoiceShortNames) {
       </div>
       <div class="part__controls">
         <label class="field">
+          <span>Instrument</span>
+          <select data-role="instrument">
+            ${allSame ? '' : '<option value="" disabled selected>Mixed</option>'}
+            ${Object.entries(INSTRUMENTS).map(([key, inst]) =>
+              `<option value="${key}" ${allSame && otherInstruments[0] === key ? 'selected' : ''}>${inst.name}</option>`
+            ).join('')}
+          </select>
+        </label>
+        <label class="field">
           <span>Volume</span>
           <input data-role="volume" type="range" min="0" max="1" step="0.01" value="${otherVolume}" title="${Math.round(otherVolume * 100)}%" />
         </label>
@@ -616,9 +628,37 @@ function renderSimpleVoiceControls(userVoice, otherVoiceShortNames) {
       </div>
     `;
     
+    const instrumentInput = row.querySelector('[data-role="instrument"]');
     const muteInput = row.querySelector('[data-role="mute"]');
     const volumeInput = row.querySelector('[data-role="volume"]');
     const panInput = row.querySelector('[data-role="pan"]');
+    
+    instrumentInput.addEventListener("change", (event) => {
+      const newInstrumentKey = event.target.value;
+      if (!newInstrumentKey) return;
+      
+      for (const shortName of otherVoiceShortNames) {
+        const voice = state.voices.find(v => v.shortName === shortName);
+        if (!voice) continue;
+        
+        voice.sampler.dispose();
+        
+        const instrument = INSTRUMENTS[newInstrumentKey] || INSTRUMENTS.piano;
+        voice.sampler = new Tone.Sampler({
+          urls: instrument.urls,
+          baseUrl: instrument.baseUrl,
+          release: instrument.release
+        });
+        voice.sampler.connect(voice.gain);
+        voice.instrument = newInstrumentKey;
+        saveVoiceInstrument(voice.shortName, newInstrumentKey);
+      }
+      
+      const mixedOption = instrumentInput.querySelector('option[value=""]');
+      if (mixedOption) {
+        mixedOption.remove();
+      }
+    });
     
     muteInput.addEventListener("change", (event) => {
       for (const shortName of otherVoiceShortNames) {
