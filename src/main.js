@@ -247,6 +247,8 @@ const elements = {
   closeSettings: document.getElementById("closeSettings"),
   themeToggle: document.getElementById("themeToggle"),
   autoAdvance: document.getElementById("autoAdvance"),
+  showTimeline: document.getElementById("showTimeline"),
+  timelinePanel: document.querySelector(".panel--timeline"),
   resetSettings: document.getElementById("resetSettings")
 };
 
@@ -257,6 +259,7 @@ const state = {
    panInverted: localStorage.getItem("panInverted") === "true",
    theme: localStorage.getItem("theme") || "light",
    autoAdvance: localStorage.getItem("autoAdvance") === "true",
+   showTimeline: localStorage.getItem("showTimeline") !== "false",
    tempo: 120,
    originalTempo: 120,
    parts: [],
@@ -1721,11 +1724,14 @@ function resetAllSettings() {
   state.panInverted = false;
   state.theme = "light";
   state.autoAdvance = false;
+  state.showTimeline = true;
   
   applyTheme("light");
   elements.userVoice.value = "T1";
   elements.panInvert.checked = false;
   elements.autoAdvance.checked = false;
+  elements.showTimeline.checked = true;
+  applyTimelineVisibility();
   
   closeSettings();
   setStatus("Settings reset to defaults");
@@ -1750,6 +1756,11 @@ elements.autoAdvance.addEventListener("change", (event) => {
   state.autoAdvance = event.target.checked;
   localStorage.setItem("autoAdvance", state.autoAdvance);
 });
+elements.showTimeline.addEventListener("change", (event) => {
+  state.showTimeline = event.target.checked;
+  localStorage.setItem("showTimeline", state.showTimeline);
+  applyTimelineVisibility();
+});
 elements.resetSettings.addEventListener("click", resetAllSettings);
 
 document.addEventListener("keydown", (event) => {
@@ -1758,9 +1769,17 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+function applyTimelineVisibility() {
+  if (elements.timelinePanel) {
+    elements.timelinePanel.style.display = state.showTimeline ? "" : "none";
+  }
+}
+
 function initSettings() {
   applyTheme(state.theme);
   elements.autoAdvance.checked = state.autoAdvance;
+  elements.showTimeline.checked = state.showTimeline;
+  applyTimelineVisibility();
 }
 
 initSettings();
