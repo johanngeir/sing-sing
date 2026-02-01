@@ -1,5 +1,47 @@
 import * as Tone from "tone";
 
+const SCORES = [
+  { name: "Færðu mér ljósið", url: "/scores/faerdu-mer-ljosid.musicxml", voices: "SATBB" },
+  { name: "Nú máttu hægt", url: "/scores/Nú máttu hægt.mvt1.withwedges-split.musicxml", voices: "TTBB" }
+];
+
+function parseVoicesString(voicesStr) {
+  if (!voicesStr) return null;
+  
+  const counts = { S: 0, A: 0, T: 0, B: 0 };
+  const result = [];
+  
+  for (const char of voicesStr.toUpperCase()) {
+    if (counts[char] !== undefined) {
+      counts[char]++;
+    }
+  }
+  
+  const needsNumber = {};
+  for (const [type, count] of Object.entries(counts)) {
+    needsNumber[type] = count > 1;
+  }
+  
+  const currentNum = { S: 0, A: 0, T: 0, B: 0 };
+  for (const char of voicesStr.toUpperCase()) {
+    if (counts[char] !== undefined) {
+      currentNum[char]++;
+      if (needsNumber[char]) {
+        result.push({ short: `${char}${currentNum[char]}`, full: `${fullName(char)} ${currentNum[char]}` });
+      } else {
+        result.push({ short: char, full: fullName(char) });
+      }
+    }
+  }
+  
+  return result;
+}
+
+function fullName(char) {
+  const names = { S: "Soprano", A: "Alto", T: "Tenor", B: "Bass" };
+  return names[char] || char;
+}
+
 const SAMPLE_BASE = "/salamander/samples/";
 const SAMPLE_URLS = {
   A3: "A3v8.wav",
@@ -15,6 +57,7 @@ const SAMPLE_URLS = {
 
 const elements = {
   status: document.getElementById("status"),
+  scoreSelect: document.getElementById("scoreSelect"),
   fileInput: document.getElementById("fileInput"),
   playButton: document.getElementById("playButton"),
   stopButton: document.getElementById("stopButton"),
@@ -28,6 +71,7 @@ const elements = {
 };
 
 const state = {
+  currentScore: null,
   tempo: 120,
   originalTempo: 120,
   parts: [],
@@ -447,60 +491,27 @@ function analyzeVoiceNames() {
       voice.median = voice.pitches.length % 2 === 0
         ? (voice.pitches[mid - 1] + voice.pitches[mid]) / 2
         : voice.pitches[mid];
-      voice.min = voice.pitches[0];
-      voice.max = voice.pitches[voice.pitches.length - 1];
     } else {
       voice.median = 0;
-      voice.min = 0;
-      voice.max = 0;
     }
   }
 
   const sorted = [...voiceStats].sort((a, b) => b.median - a.median);
-
-  const typeThresholds = [
-    { type: "S", minMedian: 67 },
-    { type: "A", minMedian: 58 },
-    { type: "T", minMedian: 52 },
-    { type: "B", minMedian: 0 }
-  ];
-
-  const typeCounts = { S: 0, A: 0, T: 0, B: 0 };
   const names = new Array(state.voiceCount);
 
-  for (const voice of sorted) {
-    let type = "B";
-    for (const threshold of typeThresholds) {
-      if (voice.median >= threshold.minMedian) {
-        type = threshold.type;
-        break;
-      }
+  const parsedVoices = parseVoicesString(state.currentScore?.voices);
+  
+  if (parsedVoices && parsedVoices.length >= state.voiceCount) {
+    for (let i = 0; i < sorted.length; i++) {
+      const voice = sorted[i];
+      names[voice.index] = parsedVoices[i];
     }
-    voice.type = type;
-    typeCounts[type]++;
-    const num = typeCounts[type];
-
-    const typeNames = {
-      S: { short: num > 1 ? `S${num}` : "S", full: num > 1 ? `Soprano ${num}` : "Soprano" },
-      A: { short: num > 1 ? `A${num}` : "A", full: num > 1 ? `Alto ${num}` : "Alto" },
-      T: { short: num > 1 ? `T${num}` : "T", full: num > 1 ? `Tenor ${num}` : "Tenor" },
-      B: { short: num > 1 ? `B${num}` : "B", full: num > 1 ? `Bass ${num}` : "Bass" }
-    };
-
-    names[voice.index] = typeNames[type];
-  }
-
-  for (const type of ["S", "A", "T", "B"]) {
-    if (typeCounts[type] === 1) {
-      const voice = sorted.find((v) => v.type === type);
-      if (voice) {
-        names[voice.index] = {
-          S: { short: "S", full: "Soprano" },
-          A: { short: "A", full: "Alto" },
-          T: { short: "T", full: "Tenor" },
-          B: { short: "B", full: "Bass" }
-        }[type];
-      }
+  } else {
+    const defaultStr = state.voiceCount <= 4 ? "SATB".slice(0, state.voiceCount) : "SATB" + "B".repeat(state.voiceCount - 4);
+    const defaultVoices = parseVoicesString(defaultStr) || [];
+    for (let i = 0; i < sorted.length; i++) {
+      const voice = sorted[i];
+      names[voice.index] = defaultVoices[i] || { short: `V${i + 1}`, full: `Voice ${i + 1}` };
     }
   }
 
@@ -807,6 +818,8 @@ elements.fileInput.addEventListener("change", (event) => {
   const file = event.target.files[0];
   if (!file) return;
   
+  state.currentScore = null;
+  
   const reader = new FileReader();
   reader.onload = (e) => {
     loadScoreFromText(e.target.result).catch((error) => {
@@ -818,3 +831,31 @@ elements.fileInput.addEventListener("change", (event) => {
   };
   reader.readAsText(file);
 });
+
+elements.scoreSelect.addEventListener("change", (event) => {
+  const url = event.target.value;
+  if (!url) return;
+  
+  state.currentScore = SCORES.find((s) => s.url === url) || null;
+  
+  fetch(url)
+    .then((response) => {
+      if (!response.ok) throw new Error("Failed to load score");
+      return response.text();
+    })
+    .then((xmlText) => loadScoreFromText(xmlText))
+    .catch((error) => {
+      setStatus(`Load error: ${error.message}`);
+    });
+});
+
+function populateScoreSelect() {
+  for (const score of SCORES) {
+    const option = document.createElement("option");
+    option.value = score.url;
+    option.textContent = score.name;
+    elements.scoreSelect.appendChild(option);
+  }
+}
+
+populateScoreSelect();

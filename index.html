@@ -15,11 +15,17 @@
           <p class="subtitle">Salamander piano samples · per-part volume/pan/mute · tempo control</p>
         </div>
         <div class="header__right">
-          <label class="file-input">
-            <input type="file" id="fileInput" accept=".musicxml,.xml" />
-            <span class="btn">Open MusicXML...</span>
-          </label>
-          <div class="status" id="status">Open a MusicXML file to begin</div>
+          <div class="score-controls">
+            <select id="scoreSelect" class="score-select">
+              <option value="">Select a score...</option>
+            </select>
+            <span class="or">or</span>
+            <label class="file-input">
+              <input type="file" id="fileInput" accept=".musicxml,.xml" />
+              <span class="btn">Open file...</span>
+            </label>
+          </div>
+          <div class="status" id="status">Select a score to begin</div>
         </div>
       </header>
 
