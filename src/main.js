@@ -2,7 +2,9 @@ import * as Tone from "tone";
 
 const SCORES = [
   { name: "Færðu mér ljósið", url: "/scores/faerdu-mer-ljosid.musicxml", voices: "SATBB" },
-  { name: "Nú máttu hægt", url: "/scores/Nú máttu hægt.mvt1.withwedges-split.musicxml", voices: "TTBB" }
+  { name: "Fjallið Skjaldbreiður", url: "/scores/fjallid-skjaldbreidur.musicxml", voices: "TTBB" },
+  { name: "Nú máttu hægt", url: "/scores/Nú máttu hægt.mvt1.withwedges-split.musicxml", voices: "TTBB" },
+  { name: "Samferða", url: "/scores/Samferða.musicxml", voices: "TTBB" }
 ];
 
 function parseVoicesString(voicesStr) {
