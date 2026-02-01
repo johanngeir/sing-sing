@@ -52,6 +52,20 @@ function fullName(char) {
   return names[char] || char;
 }
 
+function getVoiceInstruments() {
+  try {
+    return JSON.parse(localStorage.getItem("voiceInstruments")) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveVoiceInstrument(shortName, instrumentKey) {
+  const instruments = getVoiceInstruments();
+  instruments[shortName] = instrumentKey;
+  localStorage.setItem("voiceInstruments", JSON.stringify(instruments));
+}
+
 function getUserVoice() {
   return state.userVoice;
 }
@@ -750,6 +764,8 @@ function createVoiceControlRow(voiceShortName, label, isAdvanced) {
     v.pan = currentPan;
     v.muted = currentMuted;
     applyVoiceSettings(v);
+    
+    saveVoiceInstrument(voiceShortName, newInstrumentKey);
   });
 
   volumeInput.addEventListener("input", (event) => {
@@ -1367,11 +1383,11 @@ async function loadScoreFromText(xmlText) {
   const voiceNames = analyzeVoiceNames();
   const mappedUserVoice = mapUserVoiceToScore(state.userVoice, voiceNames.map(v => ({ shortName: v.short })));
 
+  const savedInstruments = getVoiceInstruments();
   const voiceStates = [];
   for (let i = 0; i < state.voiceCount; i++) {
-    const isUserVoice = voiceNames[i].short === mappedUserVoice;
-    const sampleUrls = isUserVoice ? SAMPLE_URLS_V12 : SAMPLE_URLS_V8;
-    voiceStates.push(createVoiceState(i, voiceNames[i], sampleUrls));
+    const instrumentKey = savedInstruments[voiceNames[i].short] || "piano";
+    voiceStates.push(createVoiceState(i, voiceNames[i], instrumentKey));
   }
   await Tone.loaded();
   state.voices = voiceStates;
