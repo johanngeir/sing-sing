@@ -14,7 +14,13 @@
           <h1>MusicXML Audio Playback</h1>
           <p class="subtitle">Salamander piano samples · per-part volume/pan/mute · tempo control</p>
         </div>
-        <div class="status" id="status">Loading score...</div>
+        <div class="header__right">
+          <label class="file-input">
+            <input type="file" id="fileInput" accept=".musicxml,.xml" />
+            <span class="btn">Open MusicXML...</span>
+          </label>
+          <div class="status" id="status">Open a MusicXML file to begin</div>
+        </div>
       </header>
 
       <div class="app__body">

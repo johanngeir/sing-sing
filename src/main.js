@@ -1,6 +1,5 @@
 import * as Tone from "tone";
 
-const SCORE_URL = "/score.musicxml";
 const SAMPLE_BASE = "/salamander/samples/";
 const SAMPLE_URLS = {
   A3: "A3v8.wav",
@@ -16,6 +15,7 @@ const SAMPLE_URLS = {
 
 const elements = {
   status: document.getElementById("status"),
+  fileInput: document.getElementById("fileInput"),
   playButton: document.getElementById("playButton"),
   stopButton: document.getElementById("stopButton"),
   tempo: document.getElementById("tempo"),
@@ -699,13 +699,31 @@ function updateTempoPresetButtons() {
   }
 }
 
-async function loadScore() {
-  setStatus("Loading score...");
-  const response = await fetch(SCORE_URL);
-  if (!response.ok) {
-    throw new Error("Failed to load MusicXML file");
+function resetState() {
+  if (state.isPlaying) {
+    stopPlayback();
   }
-  const xmlText = await response.text();
+  for (const voice of state.voices) {
+    if (voice.sampler) voice.sampler.dispose();
+    if (voice.gain) voice.gain.dispose();
+    if (voice.panner) voice.panner.dispose();
+  }
+  state.voices = [];
+  state.timeline = [];
+  state.timelineRows = [];
+  state.voiceCount = 0;
+  state.parts = [];
+  state.scoreReady = false;
+  state.scoreTitle = "";
+  elements.playButton.disabled = true;
+  elements.parts.innerHTML = "";
+  elements.timeline.innerHTML = "";
+}
+
+async function loadScoreFromText(xmlText) {
+  resetState();
+  setStatus("Loading score...");
+  
   const parsed = parseMusicXML(xmlText);
 
   state.originalTempo = Math.round(parsed.tempo);
@@ -785,6 +803,18 @@ elements.downloadCsv.addEventListener("click", () => {
   downloadFile("timeline.csv", `${lines.join("\n")}\n`);
 });
 
-loadScore().catch((error) => {
-  setStatus(`Load error: ${error.message}`);
+elements.fileInput.addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    loadScoreFromText(e.target.result).catch((error) => {
+      setStatus(`Load error: ${error.message}`);
+    });
+  };
+  reader.onerror = () => {
+    setStatus("Error reading file");
+  };
+  reader.readAsText(file);
 });
