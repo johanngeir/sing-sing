@@ -228,6 +228,7 @@ function buildEventsForPart(part, name, partIndex) {
   let lastChordBeats = 0;
   const timeline = [];
   let measureIndex = 0;
+  let chordIndex = 0;
 
   part.querySelectorAll("measure").forEach((measure) => {
     measureStartBeats = absoluteBeats;
@@ -285,6 +286,9 @@ function buildEventsForPart(part, name, partIndex) {
 
       if (!isChord) {
         lastChordBeats = noteBeats;
+        chordIndex = 0;
+      } else {
+        chordIndex++;
       }
 
       if (isRest) {
@@ -294,6 +298,7 @@ function buildEventsForPart(part, name, partIndex) {
           measure: measureIndex,
           voice,
           staff,
+          chordIndex,
           timeBeats: noteBeats,
           durationBeats,
           type: "rest"
@@ -314,6 +319,7 @@ function buildEventsForPart(part, name, partIndex) {
               duration: total,
               voice,
               staff,
+              chordIndex,
               measure: measureIndex
             });
           } else if (tieStop) {
@@ -323,6 +329,7 @@ function buildEventsForPart(part, name, partIndex) {
             const measureValue = existing ? existing.measure : measureIndex;
             const voiceValue = existing ? existing.voice : voice;
             const staffValue = existing ? existing.staff : staff;
+            const chordIndexValue = existing ? existing.chordIndex : chordIndex;
             tieMap.delete(tieKey);
             const event = {
               timeBeats: start,
@@ -336,6 +343,7 @@ function buildEventsForPart(part, name, partIndex) {
               measure: measureValue,
               voice: voiceValue,
               staff: staffValue,
+              chordIndex: chordIndexValue,
               timeBeats: start,
               durationBeats: total,
               type: "note",
@@ -349,6 +357,7 @@ function buildEventsForPart(part, name, partIndex) {
               measure: measureIndex,
               voice,
               staff,
+              chordIndex,
               timeBeats: noteBeats,
               durationBeats,
               type: "note",
@@ -503,49 +512,179 @@ function formatRestShort(durationBeats) {
 }
 
 function assignVoicesToNotes() {
-  const notes = state.timeline.filter((e) => e.type === "note" && e.midi !== undefined);
-  if (notes.length === 0) {
+  const events = state.timeline.filter((e) => 
+    (e.type === "note" && e.midi !== undefined) || e.type === "rest"
+  );
+  if (events.length === 0) {
     state.voiceCount = 0;
     return;
   }
 
-  const sortedNotes = [...notes].sort((a, b) => {
-    if (a.timeBeats !== b.timeBeats) return a.timeBeats - b.timeBeats;
-    return b.midi - a.midi;
-  });
+  const expectedVoiceCount = state.currentScore?.voices?.length || 0;
 
-  const voiceEndTimes = [];
-
-  for (const note of sortedNotes) {
-    const noteStart = note.timeBeats;
-    const noteEnd = noteStart + note.durationBeats;
-
-    let assignedVoice = -1;
-    for (let i = 0; i < voiceEndTimes.length; i++) {
-      if (voiceEndTimes[i] <= noteStart) {
-        assignedVoice = i;
-        voiceEndTimes[i] = noteEnd;
-        break;
-      }
+  const voiceGroups = new Map();
+  for (const event of events) {
+    const key = `${event.partIndex}:${event.voice}`;
+    if (!voiceGroups.has(key)) {
+      voiceGroups.set(key, []);
     }
-
-    if (assignedVoice === -1) {
-      assignedVoice = voiceEndTimes.length;
-      voiceEndTimes.push(noteEnd);
-    }
-
-    note.voiceIndex = assignedVoice;
+    voiceGroups.get(key).push(event);
   }
 
-  state.voiceCount = voiceEndTimes.length;
+  const baseGroupCount = voiceGroups.size;
+  const needsChordSplitting = expectedVoiceCount > baseGroupCount;
 
-  const rests = state.timeline.filter((e) => e.type === "rest");
-  for (const rest of rests) {
-    const matchingNotes = notes.filter(
-      (n) => n.partIndex === rest.partIndex && n.voice === rest.voice && n.staff === rest.staff
-    );
-    if (matchingNotes.length > 0 && matchingNotes[0].voiceIndex !== undefined) {
-      rest.voiceIndex = matchingNotes[0].voiceIndex;
+  if (!needsChordSplitting) {
+    state.voiceCount = baseGroupCount;
+    let voiceIndex = 0;
+    for (const group of voiceGroups.values()) {
+      for (const event of group) {
+        event.voiceIndex = voiceIndex;
+      }
+      voiceIndex++;
+    }
+    return;
+  }
+
+  const partGroups = new Map();
+  
+  for (const [key, groupEvents] of voiceGroups.entries()) {
+    const [partStr, voiceStr] = key.split(':');
+    const partIndex = parseInt(partStr);
+    const xmlVoice = parseInt(voiceStr);
+    const notes = groupEvents.filter(e => e.type === "note");
+    const rests = groupEvents.filter(e => e.type === "rest");
+    
+    const timeMap = new Map();
+    for (const note of notes) {
+      const t = note.timeBeats;
+      if (!timeMap.has(t)) {
+        timeMap.set(t, []);
+      }
+      timeMap.get(t).push(note);
+    }
+    
+    let maxChordSize = 0;
+    for (const notesAtTime of timeMap.values()) {
+      maxChordSize = Math.max(maxChordSize, notesAtTime.length);
+    }
+    
+    if (!partGroups.has(partIndex)) {
+      partGroups.set(partIndex, []);
+    }
+    
+    if (maxChordSize <= 1) {
+      partGroups.get(partIndex).push({ events: groupEvents, xmlVoice, fromChordSplit: false });
+    } else {
+      const subGroups = [];
+      for (let i = 0; i < maxChordSize; i++) {
+        subGroups.push([]);
+      }
+      
+      // First pass: assign notes from chords to establish pitch ranges
+      for (const [t, notesAtTime] of timeMap.entries()) {
+        if (notesAtTime.length > 1) {
+          notesAtTime.sort((a, b) => b.midi - a.midi);
+          for (let i = 0; i < notesAtTime.length; i++) {
+            subGroups[i].push(notesAtTime[i]);
+          }
+        }
+      }
+      
+      // Calculate median pitch for each subgroup
+      const subGroupMedians = subGroups.map(sg => {
+        if (sg.length === 0) return 0;
+        const pitches = sg.map(n => n.midi).sort((a, b) => a - b);
+        const mid = Math.floor(pitches.length / 2);
+        return pitches.length % 2 === 0 ? (pitches[mid-1] + pitches[mid]) / 2 : pitches[mid];
+      });
+      
+      // Second pass: assign single notes to closest subgroup by pitch
+      for (const [t, notesAtTime] of timeMap.entries()) {
+        if (notesAtTime.length === 1) {
+          const note = notesAtTime[0];
+          let bestIdx = 0;
+          let bestDist = Infinity;
+          for (let i = 0; i < maxChordSize; i++) {
+            if (subGroupMedians[i] === 0) continue;
+            const dist = Math.abs(note.midi - subGroupMedians[i]);
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestIdx = i;
+            }
+          }
+          subGroups[bestIdx].push(note);
+        }
+      }
+      
+      for (const rest of rests) {
+        subGroups[0].push(rest);
+      }
+      
+      for (const subGroup of subGroups) {
+        if (subGroup.length > 0) {
+          partGroups.get(partIndex).push({ events: subGroup, xmlVoice, fromChordSplit: true });
+        }
+      }
+    }
+  }
+
+  for (const [partIndex, groups] of partGroups.entries()) {
+    if (groups.length <= 1) continue;
+    
+    const groupStats = groups.map((g, idx) => {
+      const notes = g.events.filter(e => e.type === "note");
+      if (notes.length === 0) return { idx, median: 0, count: 0, xmlVoice: g.xmlVoice, fromChordSplit: g.fromChordSplit };
+      const pitches = notes.map(n => n.midi).sort((a, b) => a - b);
+      const mid = Math.floor(pitches.length / 2);
+      const median = pitches.length % 2 === 0 
+        ? (pitches[mid - 1] + pitches[mid]) / 2 
+        : pitches[mid];
+      return { idx, median, count: notes.length, xmlVoice: g.xmlVoice, fromChordSplit: g.fromChordSplit };
+    });
+    
+    groupStats.sort((a, b) => b.median - a.median);
+    
+    for (let i = groupStats.length - 1; i > 0; i--) {
+      const small = groupStats[i];
+      if (small.count > 10) continue;
+      if (small.fromChordSplit) continue;
+      
+      let closest = -1;
+      let closestDist = Infinity;
+      for (let j = 0; j < i; j++) {
+        if (groupStats[j].xmlVoice === small.xmlVoice) continue;
+        const dist = Math.abs(groupStats[j].median - small.median);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = j;
+        }
+      }
+      
+      if (closest >= 0 && closestDist <= 12) {
+        const targetGroup = groups[groupStats[closest].idx].events;
+        const sourceGroup = groups[small.idx].events;
+        targetGroup.push(...sourceGroup);
+        sourceGroup.length = 0;
+        groupStats.splice(i, 1);
+      }
+    }
+  }
+
+  const finalGroups = [];
+  for (const groups of partGroups.values()) {
+    for (const group of groups) {
+      if (group.events.length > 0) {
+        finalGroups.push(group.events);
+      }
+    }
+  }
+
+  state.voiceCount = finalGroups.length;
+
+  for (let i = 0; i < finalGroups.length; i++) {
+    for (const event of finalGroups[i]) {
+      event.voiceIndex = i;
     }
   }
 }
