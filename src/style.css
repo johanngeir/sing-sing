@@ -479,6 +479,16 @@ input[type="range"]::-moz-range-thumb {
   letter-spacing: 0.05em;
 }
 
+.timeline__row--header span {
+  text-align: center;
+}
+
+.timeline__row--header span:nth-child(1),
+.timeline__row--header span:nth-child(2),
+.timeline__row--header span:nth-child(3) {
+  text-align: left;
+}
+
 .timeline__row span {
   white-space: nowrap;
   overflow: hidden;
