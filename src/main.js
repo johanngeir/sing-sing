@@ -209,8 +209,19 @@ const elements = {
   userVoice: document.getElementById("userVoice"),
   instrumentSelect: document.getElementById("instrumentSelect"),
   panInvert: document.getElementById("panInvert"),
-  playButton: document.getElementById("playButton"),
-  stopButton: document.getElementById("stopButton"),
+  playerBar: document.getElementById("playerBar"),
+  playPauseButton: document.getElementById("playPauseButton"),
+  playerStopButton: document.getElementById("playerStopButton"),
+  skipBackButton: document.getElementById("skipBackButton"),
+  skipForwardButton: document.getElementById("skipForwardButton"),
+  seekBar: document.getElementById("seekBar"),
+  currentTime: document.getElementById("currentTime"),
+  totalTime: document.getElementById("totalTime"),
+  setLoopButton: document.getElementById("setLoopButton"),
+  clearLoopButton: document.getElementById("clearLoopButton"),
+  loopDisplay: document.getElementById("loopDisplay"),
+  loopMarkerA: document.getElementById("loopMarkerA"),
+  loopMarkerB: document.getElementById("loopMarkerB"),
   tempo: document.getElementById("tempo"),
   tempoValue: document.getElementById("tempoValue"),
   tempoPresets: document.getElementById("tempoPresets"),
@@ -1173,6 +1184,17 @@ function buildSchedule() {
   }
 }
 
+function pausePlayback() {
+  if (!state.isPlaying) return;
+  Tone.Transport.pause();
+  state.isPlaying = false;
+  elements.playPauseButton.textContent = "▶";
+  if (state.playbackRAF) {
+    cancelAnimationFrame(state.playbackRAF);
+    state.playbackRAF = null;
+  }
+}
+
 async function startPlayback(fromSeconds = 0) {
   if (!state.scoreReady || state.isPlaying) return;
   await Tone.start();
@@ -1180,8 +1202,7 @@ async function startPlayback(fromSeconds = 0) {
   buildSchedule();
   Tone.Transport.seconds = fromSeconds;
   Tone.Transport.start();
-  elements.playButton.disabled = true;
-  elements.stopButton.disabled = false;
+  elements.playPauseButton.textContent = "❚❚";
   updatePlaybackHighlight();
 }
 
@@ -1190,8 +1211,7 @@ function stopPlayback() {
   Tone.Transport.stop();
   Tone.Transport.cancel();
   state.isPlaying = false;
-  elements.playButton.disabled = false;
-  elements.stopButton.disabled = true;
+  elements.playPauseButton.textContent = "▶";
   if (state.playbackRAF) {
     cancelAnimationFrame(state.playbackRAF);
     state.playbackRAF = null;
@@ -1240,7 +1260,6 @@ function resetState() {
   state.parts = [];
   state.scoreReady = false;
   state.scoreTitle = "";
-  elements.playButton.disabled = true;
   elements.parts.innerHTML = "";
   if (elements.timeline) elements.timeline.innerHTML = "";
 }
@@ -1276,18 +1295,49 @@ async function loadScoreFromText(xmlText) {
 
   applyUserVoiceMix();
   renderTimeline();
-  elements.playButton.disabled = false;
   setStatus(`Loaded: ${parsed.title} (${state.voiceCount} voices)`);
 }
 
-elements.playButton.addEventListener("click", () => {
-  startPlayback().catch((error) => {
-    setStatus(`Playback error: ${error.message}`);
-  });
+elements.playPauseButton.addEventListener("click", async () => {
+   if (state.isPlaying) {
+     pausePlayback();
+   } else {
+     // Resume from current position if paused, otherwise start from beginning
+     const position = Tone.Transport.seconds;
+     try {
+       await startPlayback(position > 0 ? position : 0);
+     } catch (error) {
+       setStatus(`Playback error: ${error.message}`);
+     }
+   }
 });
 
-elements.stopButton.addEventListener("click", () => {
-  stopPlayback();
+elements.playerStopButton.addEventListener("click", () => {
+    stopPlayback();
+    // Reset to loop start or beginning
+    if (state.loopA !== null && state.loopASeconds !== null) {
+      Tone.Transport.seconds = state.loopASeconds;
+    } else {
+      Tone.Transport.seconds = 0;
+    }
+});
+
+elements.skipBackButton.addEventListener("click", () => {
+  const currentMeasure = getCurrentMeasure();
+  if (currentMeasure > 0) {
+    Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure - 1);
+  } else {
+    Tone.Transport.seconds = 0;
+  }
+});
+
+elements.skipForwardButton.addEventListener("click", () => {
+  const currentMeasure = getCurrentMeasure();
+  const totalMeasures = getTotalMeasures();
+  if (currentMeasure < totalMeasures - 1) {
+    Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure + 1);
+  }
+  // If at last measure, do nothing (stay at current position)
 });
 
 elements.tempo.addEventListener("input", (event) => {
