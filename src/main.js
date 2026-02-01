@@ -42,6 +42,58 @@ function fullName(char) {
   return names[char] || char;
 }
 
+function getUserVoice() {
+  return state.userVoice;
+}
+
+function setUserVoice(voice) {
+  state.userVoice = voice;
+  localStorage.setItem("userVoice", voice);
+  elements.userVoice.value = voice;
+  if (state.scoreReady) {
+    applyUserVoiceMix();
+  }
+}
+
+function mapUserVoiceToScore(userVoice, scoreVoices) {
+  const userBase = userVoice.charAt(0);
+  const userNum = userVoice.length > 1 ? parseInt(userVoice.charAt(1), 10) : 1;
+  
+  const exactMatch = scoreVoices.find((v) => v.shortName === userVoice);
+  if (exactMatch) return exactMatch.shortName;
+  
+  const baseMatch = scoreVoices.find((v) => v.shortName === userBase);
+  if (baseMatch) return baseMatch.shortName;
+  
+  const numberedMatches = scoreVoices.filter((v) => v.shortName.charAt(0) === userBase);
+  if (numberedMatches.length > 0) {
+    const target = numberedMatches.find((v) => v.shortName === `${userBase}${userNum}`);
+    if (target) return target.shortName;
+    return numberedMatches[0].shortName;
+  }
+  
+  return null;
+}
+
+function applyUserVoiceMix() {
+  if (state.voices.length === 0) return;
+  
+  const mappedVoice = mapUserVoiceToScore(state.userVoice, state.voices);
+  
+  for (const voice of state.voices) {
+    if (voice.shortName === mappedVoice) {
+      voice.volume = 1.0;
+      voice.pan = -0.8;
+    } else {
+      voice.volume = 0.5;
+      voice.pan = 0.6;
+    }
+    applyVoiceSettings(voice);
+  }
+  
+  renderVoices();
+}
+
 const SAMPLE_BASE = "/salamander/samples/";
 const SAMPLE_URLS = {
   A3: "A3v8.wav",
@@ -59,6 +111,7 @@ const elements = {
   status: document.getElementById("status"),
   scoreSelect: document.getElementById("scoreSelect"),
   fileInput: document.getElementById("fileInput"),
+  userVoice: document.getElementById("userVoice"),
   playButton: document.getElementById("playButton"),
   stopButton: document.getElementById("stopButton"),
   tempo: document.getElementById("tempo"),
@@ -72,6 +125,7 @@ const elements = {
 
 const state = {
   currentScore: null,
+  userVoice: localStorage.getItem("userVoice") || "T1",
   tempo: 120,
   originalTempo: 120,
   parts: [],
@@ -757,7 +811,7 @@ async function loadScoreFromText(xmlText) {
   state.voices = voiceStates;
   state.scoreReady = true;
 
-  renderVoices();
+  applyUserVoiceMix();
   renderTimeline();
   elements.playButton.disabled = false;
   setStatus(`Loaded: ${parsed.title} (${state.voiceCount} voices)`);
@@ -849,6 +903,14 @@ elements.scoreSelect.addEventListener("change", (event) => {
     });
 });
 
+elements.userVoice.addEventListener("change", (event) => {
+  setUserVoice(event.target.value);
+});
+
+function initUserVoice() {
+  elements.userVoice.value = state.userVoice;
+}
+
 function populateScoreSelect() {
   for (const score of SCORES) {
     const option = document.createElement("option");
@@ -858,4 +920,5 @@ function populateScoreSelect() {
   }
 }
 
+initUserVoice();
 populateScoreSelect();
