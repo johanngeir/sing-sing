@@ -83,10 +83,10 @@ function applyUserVoiceMix() {
   for (const voice of state.voices) {
     if (voice.shortName === mappedVoice) {
       voice.volume = 1.0;
-      voice.pan = -0.8;
+      voice.pan = 0.9;
     } else {
-      voice.volume = 0.5;
-      voice.pan = 0.6;
+      voice.volume = 0.6;
+      voice.pan = -0.9;
     }
     applyVoiceSettings(voice);
   }
