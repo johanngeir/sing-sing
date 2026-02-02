@@ -1211,8 +1211,8 @@ function updatePlaybackHighlight() {
     return;
   }
 
-  const currentSeconds = Tone.Transport.seconds;
-  const currentBeats = (currentSeconds * state.tempo) / 60;
+  const currentBeats = Tone.Transport.ticks / Tone.Transport.PPQ;
+  const currentSeconds = beatsToSeconds(currentBeats);
 
   const rows = elements.timeline.querySelectorAll(".timeline__row:not(.timeline__row--header)");
   let activeIndex = -1;
@@ -1238,7 +1238,7 @@ function updatePlaybackHighlight() {
    });
 
     if (!state.isSeeking) {
-      elements.seekBar.value = currentSeconds;
+      elements.seekBar.value = currentBeats;
     }
 
     const currentMeasure = getCurrentMeasure();
@@ -1254,8 +1254,8 @@ function updatePlaybackHighlight() {
     }
 
     // Check if playback reached the end
-    const totalDuration = getTotalDuration();
-    if (currentSeconds >= totalDuration) {
+    const totalBeats = getTotalBeats();
+    if (currentBeats >= totalBeats) {
       stopPlayback();
       if (state.autoAdvance) {
         loadNextScore();
@@ -1287,10 +1287,22 @@ function getMeasureStartSeconds(measureNumber) {
    return null;
 }
 
+function getTotalBeats() {
+  if (state.timelineRows.length === 0) return 0;
+  const lastRow = state.timelineRows[state.timelineRows.length - 1];
+  return lastRow.timeBeats + 4;
+}
+
 function getTotalDuration() {
-   if (state.timelineRows.length === 0) return 0;
-   const lastRow = state.timelineRows[state.timelineRows.length - 1];
-   return (lastRow.timeBeats * 60) / state.tempo + 2;
+   return (getTotalBeats() * 60) / state.tempo;
+}
+
+function beatsToSeconds(beats) {
+  return (beats * 60) / state.tempo;
+}
+
+function secondsToBeats(seconds) {
+  return (seconds * state.tempo) / 60;
 }
 
 function getCurrentMeasure() {
@@ -1339,12 +1351,12 @@ function pausePlayback() {
   }
 }
 
-async function startPlayback(fromSeconds = 0) {
+async function startPlayback(fromBeats = 0) {
   if (!state.scoreReady || state.isPlaying) return;
   await Tone.start();
   state.isPlaying = true;
   buildSchedule();
-  Tone.Transport.seconds = fromSeconds;
+  Tone.Transport.ticks = fromBeats * Tone.Transport.PPQ;
   Tone.Transport.start();
   elements.playPauseButton.textContent = "❚❚";
   updatePlaybackHighlight();
@@ -1379,9 +1391,10 @@ function setTempo(value) {
 
 function updatePlaybackControls() {
   if (!state.scoreReady) return;
+  const totalBeats = getTotalBeats();
   const totalDuration = getTotalDuration();
   const totalMeasures = getTotalMeasures();
-  elements.seekBar.max = totalDuration;
+  elements.seekBar.max = totalBeats;
   elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
 }
 
@@ -1461,8 +1474,9 @@ async function loadScoreFromText(xmlText) {
 
      applyUserVoiceMix();
      renderTimeline();
+     const totalBeats = getTotalBeats();
      const totalDuration = getTotalDuration();
-     elements.seekBar.max = totalDuration;
+     elements.seekBar.max = totalBeats;
      elements.seekBar.value = 0;
      const totalMeasures = getTotalMeasures();
      elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
@@ -1475,10 +1489,9 @@ elements.playPauseButton.addEventListener("click", async () => {
     if (state.isPlaying) {
       pausePlayback();
     } else {
-      // Resume from current position if paused, otherwise start from beginning
-      const position = Tone.Transport.seconds;
+      const currentBeats = Tone.Transport.ticks / Tone.Transport.PPQ;
       try {
-        await startPlayback(position > 0 ? position : 0);
+        await startPlayback(currentBeats > 0 ? currentBeats : 0);
       } catch (error) {
         setStatus(`Playback error: ${error.message}`);
       }
@@ -1486,7 +1499,8 @@ elements.playPauseButton.addEventListener("click", async () => {
 });
 
 elements.seekBar.addEventListener("input", () => {
-  Tone.Transport.seconds = parseFloat(elements.seekBar.value);
+  const beats = parseFloat(elements.seekBar.value);
+  Tone.Transport.ticks = beats * Tone.Transport.PPQ;
 });
 
 elements.seekBar.addEventListener("pointerdown", () => {
