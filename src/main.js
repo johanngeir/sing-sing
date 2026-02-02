@@ -1290,7 +1290,7 @@ function getMeasureStartSeconds(measureNumber) {
 function getTotalDuration() {
    if (state.timelineRows.length === 0) return 0;
    const lastRow = state.timelineRows[state.timelineRows.length - 1];
-   return lastRow.timeSeconds + 2;
+   return (lastRow.timeBeats * 60) / state.tempo + 2;
 }
 
 function getCurrentMeasure() {
@@ -1374,6 +1374,15 @@ function setTempo(value) {
   elements.tempoValue.textContent = String(value);
   updateTempoPresetButtons();
   Tone.Transport.bpm.value = value;
+  updatePlaybackControls();
+}
+
+function updatePlaybackControls() {
+  if (!state.scoreReady) return;
+  const totalDuration = getTotalDuration();
+  const totalMeasures = getTotalMeasures();
+  elements.seekBar.max = totalDuration;
+  elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
 }
 
 function updateTempoPresetButtons() {
