@@ -249,7 +249,8 @@ const elements = {
   autoAdvance: document.getElementById("autoAdvance"),
   showTimeline: document.getElementById("showTimeline"),
   timelinePanel: document.querySelector(".panel--timeline"),
-  resetSettings: document.getElementById("resetSettings")
+  resetSettings: document.getElementById("resetSettings"),
+  tempoSelect: document.getElementById("tempoSelect")
 };
 
 const state = {
@@ -1405,6 +1406,15 @@ function updateTempoPresetButtons() {
     const btnPct = Number(btn.dataset.tempoPct);
     btn.classList.toggle("btn--active", btnPct === pct);
   }
+  
+  const multiplier = state.tempo / state.originalTempo;
+  const selectValue = multiplier.toFixed(1).replace(/\.0$/, '');
+  if (elements.tempoSelect) {
+    const option = [...elements.tempoSelect.options].find(o => parseFloat(o.value) === parseFloat(selectValue));
+    if (option) {
+      elements.tempoSelect.value = option.value;
+    }
+  }
 }
 
 function resetState() {
@@ -1625,6 +1635,13 @@ elements.clearLoopButton.addEventListener("click", () => {
 elements.tempo.addEventListener("input", (event) => {
   const value = Number(event.target.value);
   setTempo(value);
+  renderTimeline();
+});
+
+elements.tempoSelect.addEventListener("change", (event) => {
+  const multiplier = parseFloat(event.target.value);
+  const newTempo = Math.round(state.originalTempo * multiplier);
+  setTempo(newTempo);
   renderTimeline();
 });
 

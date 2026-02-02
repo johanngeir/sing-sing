@@ -972,6 +972,27 @@ input[type="range"]::-moz-range-thumb {
   white-space: nowrap;
 }
 
+.player-bar__tempo {
+  display: flex;
+  align-items: center;
+}
+
+.player-bar__tempo-select {
+  padding: 4px 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 54px;
+}
+
+.player-bar__tempo-select:hover {
+  border-color: var(--input-border-hover);
+}
+
 /* Prevent content from being hidden by player bar */
 body {
   padding-bottom: 80px;
