@@ -1373,10 +1373,7 @@ function setTempo(value) {
   elements.tempo.value = String(value);
   elements.tempoValue.textContent = String(value);
   updateTempoPresetButtons();
-  if (state.isPlaying) {
-    stopPlayback();
-    startPlayback();
-  }
+  Tone.Transport.bpm.value = value;
 }
 
 function updateTempoPresetButtons() {
