@@ -639,11 +639,24 @@ input[type="range"]::-moz-range-thumb {
 
 @media (max-width: 480px) {
   .app {
-    padding: 16px 12px 32px;
+    padding: 12px 10px 28px;
   }
 
   h1 {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
+  }
+
+  .eyebrow {
+    font-size: 0.65rem;
+  }
+
+  .panel h2 {
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+  }
+
+  .parts {
+    gap: 8px;
   }
 
   .score-controls {
@@ -671,8 +684,8 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .panel {
-    padding: 16px;
-    border-radius: 16px;
+    padding: 12px;
+    border-radius: 12px;
   }
 
   .controls {
@@ -685,11 +698,22 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .part {
-    padding: 14px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .part__name {
+    font-size: 0.9rem;
   }
 
   .part__controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .field {
+    gap: 4px;
+    font-size: 0.8rem;
   }
 
   .field input[type="range"]::-webkit-slider-thumb {
