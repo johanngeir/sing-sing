@@ -307,45 +307,6 @@ h2 {
   cursor: not-allowed;
 }
 
-.tempo-group {
-  border: 1px solid #e0d7ca;
-  border-radius: 12px;
-  padding: 14px 16px;
-  background: linear-gradient(to bottom, #faf7f2, #f6f2ea);
-}
-
-.tempo {
-  display: grid;
-  grid-template-columns: 100px 1fr 40px;
-  align-items: center;
-  gap: 12px;
-}
-
-.tempo label {
-  font-size: 0.85rem;
-  color: #5c5348;
-}
-
-.tempo span {
-  font-weight: 600;
-  font-size: 0.95rem;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.tempo-presets {
-  display: flex;
-  gap: 6px;
-  margin-top: 12px;
-}
-
-.tempo-presets .btn--small {
-  flex: 1;
-  padding: 6px 8px;
-  min-width: 0;
-  text-align: center;
-}
-
 .btn--small {
   padding: 6px 14px;
   font-size: 0.8rem;
@@ -355,10 +316,6 @@ h2 {
   background: linear-gradient(to bottom, #2d2820, #1d1913);
   color: #f7f2ea;
   border-color: #1d1913;
-}
-
-.tempo input {
-  width: 100%;
 }
 
 .parts {
@@ -659,19 +616,6 @@ input[type="range"]::-moz-range-thumb {
     align-items: flex-start;
   }
 
-  .tempo {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .tempo label {
-    margin-bottom: 4px;
-  }
-
-  .tempo span {
-    text-align: left;
-  }
-
   .sidebar {
     flex-direction: column;
   }
@@ -729,15 +673,6 @@ input[type="range"]::-moz-range-thumb {
   .panel {
     padding: 16px;
     border-radius: 16px;
-  }
-
-  .tempo-presets {
-    flex-wrap: wrap;
-  }
-
-  .tempo-presets .btn--small {
-    flex: 0 0 calc(33.33% - 4px);
-    padding: 10px 6px;
   }
 
   .controls {

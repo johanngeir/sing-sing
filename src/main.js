@@ -230,18 +230,15 @@ const elements = {
   seekBar: document.getElementById("seekBar"),
   currentTime: document.getElementById("currentTime"),
   totalTime: document.getElementById("totalTime"),
+  parts: document.getElementById("parts"),
+  timeline: IS_DEV ? document.getElementById("timeline") : null,
+  downloadJson: IS_DEV ? document.getElementById("downloadJson") : null,
+  downloadCsv: IS_DEV ? document.getElementById("downloadCsv") : null,
   setLoopButton: document.getElementById("setLoopButton"),
   clearLoopButton: document.getElementById("clearLoopButton"),
   loopDisplay: document.getElementById("loopDisplay"),
   loopMarkerA: document.getElementById("loopMarkerA"),
   loopMarkerB: document.getElementById("loopMarkerB"),
-  tempo: document.getElementById("tempo"),
-  tempoValue: document.getElementById("tempoValue"),
-  tempoPresets: document.getElementById("tempoPresets"),
-  parts: document.getElementById("parts"),
-  timeline: IS_DEV ? document.getElementById("timeline") : null,
-  downloadJson: IS_DEV ? document.getElementById("downloadJson") : null,
-  downloadCsv: IS_DEV ? document.getElementById("downloadCsv") : null,
   settingsButton: document.getElementById("settingsButton"),
   settingsModal: document.getElementById("settingsModal"),
   closeSettings: document.getElementById("closeSettings"),
@@ -1383,9 +1380,7 @@ function stopPlayback() {
 
 function setTempo(value) {
   state.tempo = value;
-  elements.tempo.value = String(value);
-  elements.tempoValue.textContent = String(value);
-  updateTempoPresetButtons();
+  updateTempoSelect();
   Tone.Transport.bpm.value = value;
   updatePlaybackControls();
 }
@@ -1399,14 +1394,7 @@ function updatePlaybackControls() {
   elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
 }
 
-function updateTempoPresetButtons() {
-  const pct = Math.round((state.tempo / state.originalTempo) * 100);
-  const buttons = elements.tempoPresets.querySelectorAll("button");
-  for (const btn of buttons) {
-    const btnPct = Number(btn.dataset.tempoPct);
-    btn.classList.toggle("btn--active", btnPct === pct);
-  }
-  
+function updateTempoSelect() {
   const multiplier = state.tempo / state.originalTempo;
   const selectValue = multiplier.toFixed(1).replace(/\.0$/, '');
   if (elements.tempoSelect) {
@@ -1464,9 +1452,7 @@ async function loadScoreFromText(xmlText) {
   state.scoreTitle = parsed.title;
   state.timeline = parsed.timeline;
   state.parts = parsed.parts;
-  elements.tempo.value = String(state.tempo);
-  elements.tempoValue.textContent = String(state.tempo);
-  updateTempoPresetButtons();
+  updateTempoSelect();
 
   assignVoicesToNotes();
   const voiceNames = analyzeVoiceNames();
@@ -1632,24 +1618,9 @@ elements.clearLoopButton.addEventListener("click", () => {
   elements.setLoopButton.title = "Set loop point";
 });
 
-elements.tempo.addEventListener("input", (event) => {
-  const value = Number(event.target.value);
-  setTempo(value);
-  renderTimeline();
-});
-
 elements.tempoSelect.addEventListener("change", (event) => {
   const multiplier = parseFloat(event.target.value);
   const newTempo = Math.round(state.originalTempo * multiplier);
-  setTempo(newTempo);
-  renderTimeline();
-});
-
-elements.tempoPresets.addEventListener("click", (event) => {
-  const btn = event.target.closest("button[data-tempo-pct]");
-  if (!btn) return;
-  const pct = Number(btn.dataset.tempoPct);
-  const newTempo = Math.round(state.originalTempo * (pct / 100));
   setTempo(newTempo);
   renderTimeline();
 });
