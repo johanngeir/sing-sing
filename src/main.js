@@ -1,4 +1,5 @@
 import * as Tone from "tone";
+import { SCORES } from "./scores.js";
 
 const IS_DEV = import.meta.env.DEV;
 
@@ -13,13 +14,6 @@ if (!IS_DEV) {
     el.remove();
   });
 }
-
-const SCORES = [
-  { name: "Færðu mér ljósið", url: "/scores/faerdu-mer-ljosid.musicxml", voices: "SATBB" },
-  { name: "Fjallið Skjaldbreiður", url: "/scores/fjallid-skjaldbreidur.musicxml", voices: "TTBB" },
-  { name: "Nú máttu hægt", url: "/scores/Nú máttu hægt.mvt1.withwedges-split.musicxml", voices: "TTBB" },
-  { name: "Samferða", url: "/scores/Samferða.musicxml", voices: "TTBB" }
-];
 
 function parseVoicesString(voicesStr) {
   if (!voicesStr) return null;
