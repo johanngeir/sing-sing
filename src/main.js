@@ -2,6 +2,12 @@ import * as Tone from "tone";
 
 const IS_DEV = import.meta.env.DEV;
 
+if ('serviceWorker' in navigator && !IS_DEV) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+
 if (!IS_DEV) {
   document.querySelectorAll("[data-dev]").forEach(el => {
     el.remove();
