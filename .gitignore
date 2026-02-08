@@ -5,3 +5,4 @@ public/score.musicxml
 *.log
 .DS_Store
 .vercel
+coverage/
