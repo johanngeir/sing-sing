@@ -253,7 +253,6 @@ const elements = {
 const state = {
    currentScore: null,
    userVoice: localStorage.getItem("userVoice") || "T1",
-   instrument: localStorage.getItem("instrument") || "piano",
    panInverted: localStorage.getItem("panInverted") === "true",
    theme: localStorage.getItem("theme") || "light",
    autoAdvance: localStorage.getItem("autoAdvance") === "true",
@@ -1728,7 +1727,6 @@ function resetAllSettings() {
   localStorage.clear();
   
   state.userVoice = "T1";
-  state.instrument = "piano";
   state.panInverted = false;
   state.theme = "light";
   state.autoAdvance = false;

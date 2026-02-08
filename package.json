@@ -11,8 +11,6 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-    "opensheetmusicdisplay": "^1.9.0",
-    "osmd-audio-player": "^0.7.0",
     "tone": "^14.7.77"
   },
   "devDependencies": {

@@ -1,13 +1,14 @@
-const CACHE_NAME = 'sing-sing-v1';
+const CACHE_NAME = 'sing-sing-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/src/main.js',
   '/src/style.css',
-  '/scores/faerdu_mer_ljosid.musicxml',
-  '/scores/fjallid_skjaldbreidur.musicxml',
-  '/scores/nu_mattu_haegt.musicxml',
-  '/scores/samferdha.musicxml'
+  '/scores/drottinn-gerdu-hljott.musicxml',
+  '/scores/faerdu-mer-ljosid.musicxml',
+  '/scores/fjallid-skjaldbreidur.musicxml',
+  '/scores/nu-mattu-haegt.musicxml',
+  '/scores/samferda.musicxml'
 ];
 
 self.addEventListener('install', (event) => {
