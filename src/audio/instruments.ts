@@ -1,4 +1,6 @@
-const SAMPLE_URLS_V8 = {
+import type { InstrumentConfig, InstrumentKey, InstrumentSource } from "../types";
+
+const SAMPLE_URLS_V8: Record<string, string> = {
   A3: "A3v8.wav",
   C3: "C3v8.wav",
   "D#3": "Ds3v8.wav",
@@ -9,7 +11,7 @@ const SAMPLE_URLS_V8 = {
   "F#4": "Fs4v8.wav",
   C5: "C5v8.wav"
 };
-const SAMPLE_URLS_V12 = {
+const SAMPLE_URLS_V12: Record<string, string> = {
   A3: "A3v12.wav",
   C3: "C3v12.wav",
   "D#3": "Ds3v12.wav",
@@ -23,7 +25,7 @@ const SAMPLE_URLS_V12 = {
 
 const CDN_BASE = "https://nbrosowsky.github.io/tonejs-instruments/samples/";
 
-const INSTRUMENT_SOURCES = {
+const INSTRUMENT_SOURCES: Record<string, InstrumentSource> = {
   salamander: {
     name: "Salamander Grand Piano",
     author: "Alexander Holm",
@@ -38,7 +40,7 @@ const INSTRUMENT_SOURCES = {
   }
 };
 
-const INSTRUMENTS = {
+const INSTRUMENTS: Record<InstrumentKey, InstrumentConfig> = {
   piano: {
     name: "Piano",
     source: INSTRUMENT_SOURCES.salamander,

@@ -1,4 +1,28 @@
-function initAudioEngine(deps) {
+import type * as ToneNs from "tone";
+import type { AppState, AppElements, VoiceName, VoiceState, ParsedScore, InstrumentKey } from "../types";
+
+interface AudioEngineDeps {
+  Tone: typeof ToneNs;
+  state: AppState;
+  elements: AppElements;
+  setStatus: (message: string) => void;
+  parseMusicXML: (xmlText: string) => ParsedScore;
+  midiToNoteName: (midi: number) => string;
+  assignVoicesToNotes: () => void;
+  analyzeVoiceNames: () => VoiceName[];
+  mapUserVoiceToScore: (userVoice: string, voices: { shortName: string }[]) => string | null;
+  getVoiceInstruments: () => Record<string, string>;
+  createVoiceState: (voiceIndex: number, voiceName: VoiceName, instrumentKey?: InstrumentKey) => VoiceState;
+  applyUserVoiceMix: () => void;
+  renderTimeline: () => void;
+  getTotalBeats: () => number;
+  getTotalDuration: () => number;
+  getTotalMeasures: () => number;
+  formatTime: (seconds: number) => string;
+  updatePlaybackHighlight: () => void;
+}
+
+function initAudioEngine(deps: AudioEngineDeps) {
   const {
     Tone,
     state,
@@ -32,7 +56,7 @@ function initAudioEngine(deps) {
 
       const startSeconds = (note.timeBeats * 60) / state.tempo;
       const durationSeconds = (note.durationBeats * 60) / state.tempo;
-      const noteName = midiToNoteName(note.midi);
+      const noteName = midiToNoteName(note.midi!);
       Tone.Transport.schedule((time) => {
         voice.sampler.triggerAttackRelease(noteName, durationSeconds, time, 0.8);
       }, startSeconds);
@@ -50,7 +74,7 @@ function initAudioEngine(deps) {
     }
   }
 
-  async function startPlayback(fromBeats = 0) {
+  async function startPlayback(fromBeats: number = 0) {
     if (!state.scoreReady || state.isPlaying) return;
     await Tone.start();
     state.isPlaying = true;
@@ -79,7 +103,7 @@ function initAudioEngine(deps) {
     }
   }
 
-  function setTempo(value) {
+  function setTempo(value: number) {
     state.tempo = value;
     updateTempoSelect();
     Tone.Transport.bpm.value = value;
@@ -91,7 +115,7 @@ function initAudioEngine(deps) {
     const totalBeats = getTotalBeats();
     const totalDuration = getTotalDuration();
     const totalMeasures = getTotalMeasures();
-    elements.seekBar.max = totalBeats;
+    elements.seekBar.max = String(totalBeats);
     elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
   }
 
@@ -142,7 +166,7 @@ function initAudioEngine(deps) {
     if (elements.timeline) elements.timeline.innerHTML = "";
   }
 
-  async function loadScoreFromText(xmlText) {
+  async function loadScoreFromText(xmlText: string) {
     resetState();
     setStatus("Loading score...");
 
@@ -162,7 +186,7 @@ function initAudioEngine(deps) {
     const savedInstruments = getVoiceInstruments();
     const voiceStates = [];
     for (let i = 0; i < state.voiceCount; i++) {
-      const instrumentKey = savedInstruments[voiceNames[i].short] || "piano";
+      const instrumentKey = (savedInstruments[voiceNames[i].short] || "piano") as InstrumentKey;
       voiceStates.push(createVoiceState(i, voiceNames[i], instrumentKey));
     }
     await Tone.loaded();
@@ -173,8 +197,8 @@ function initAudioEngine(deps) {
     renderTimeline();
     const totalBeats = getTotalBeats();
     const totalDuration = getTotalDuration();
-    elements.seekBar.max = totalBeats;
-    elements.seekBar.value = 0;
+    elements.seekBar.max = String(totalBeats);
+    elements.seekBar.value = "0";
     const totalMeasures = getTotalMeasures();
     elements.totalTime.textContent = `${formatTime(totalDuration)} (M. ${totalMeasures})`;
     elements.currentTime.textContent = "0:00 (M. 1)";
