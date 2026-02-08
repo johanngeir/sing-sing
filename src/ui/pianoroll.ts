@@ -373,8 +373,9 @@ export function initPianoRoll({
 
     if (found && found.midi !== undefined) {
         tooltip.hidden = false;
-        tooltip.style.left = `${e.clientX + 10}px`;
-        tooltip.style.top = `${e.clientY + 10}px`;
+        const containerRect = container.getBoundingClientRect();
+        tooltip.style.left = `${e.clientX - containerRect.left + 12}px`;
+        tooltip.style.top = `${e.clientY - containerRect.top + 12}px`;
         
         const noteName = Tone.Frequency(found.midi, "midi").toNote();
         const voiceName = state.voices[found.voiceIndex || 0]?.shortName || "?";
