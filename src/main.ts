@@ -1,13 +1,14 @@
 import * as Tone from "tone";
-import { SCORES } from "./scores.js";
-import { INSTRUMENTS, INSTRUMENT_SOURCES } from "./audio/instruments.js";
-import { parseMusicXML } from "./parser/musicxml.js";
-import { initAudioEngine } from "./audio/engine.js";
-import { initVoices } from "./ui/voices.js";
-import { initPlayer } from "./ui/player.js";
-import { initSettings } from "./ui/settings.js";
-import { initTimeline } from "./ui/timeline.js";
-import { state, getVoiceInstruments, saveVoiceInstrument, getUserVoice as getStoredUserVoice, setUserVoice as setStoredUserVoice } from "./state.js";
+import type { AppElements, Score } from "./types";
+import { SCORES } from "./scores.ts";
+import { INSTRUMENTS, INSTRUMENT_SOURCES } from "./audio/instruments.ts";
+import { parseMusicXML } from "./parser/musicxml.ts";
+import { initAudioEngine } from "./audio/engine.ts";
+import { initVoices } from "./ui/voices.ts";
+import { initPlayer } from "./ui/player.ts";
+import { initSettings } from "./ui/settings.ts";
+import { initTimeline } from "./ui/timeline.ts";
+import { state, getVoiceInstruments, saveVoiceInstrument, getUserVoice as getStoredUserVoice, setUserVoice as setStoredUserVoice } from "./state.ts";
 
 const IS_DEV = import.meta.env.DEV;
 
@@ -23,44 +24,44 @@ if (!IS_DEV) {
   });
 }
 
-const elements = {
-  status: document.getElementById("status"),
-  scoreSelect: document.getElementById("scoreSelect"),
-  userVoice: document.getElementById("userVoice"),
-  panInvert: document.getElementById("panInvert"),
-  playerBar: document.getElementById("playerBar"),
-  playPauseButton: document.getElementById("playPauseButton"),
-  playerStopButton: document.getElementById("playerStopButton"),
-  skipBackButton: document.getElementById("skipBackButton"),
-  skipForwardButton: document.getElementById("skipForwardButton"),
-  seekBar: document.getElementById("seekBar"),
-  currentTime: document.getElementById("currentTime"),
-  totalTime: document.getElementById("totalTime"),
-  parts: document.getElementById("parts"),
+const elements: AppElements = {
+  status: document.getElementById("status")!,
+  scoreSelect: document.getElementById("scoreSelect") as HTMLSelectElement,
+  userVoice: document.getElementById("userVoice") as HTMLSelectElement,
+  panInvert: document.getElementById("panInvert") as HTMLInputElement,
+  playerBar: document.getElementById("playerBar")!,
+  playPauseButton: document.getElementById("playPauseButton") as HTMLButtonElement,
+  playerStopButton: document.getElementById("playerStopButton") as HTMLButtonElement,
+  skipBackButton: document.getElementById("skipBackButton") as HTMLButtonElement,
+  skipForwardButton: document.getElementById("skipForwardButton") as HTMLButtonElement,
+  seekBar: document.getElementById("seekBar") as HTMLInputElement,
+  currentTime: document.getElementById("currentTime")!,
+  totalTime: document.getElementById("totalTime")!,
+  parts: document.getElementById("parts")!,
   timeline: IS_DEV ? document.getElementById("timeline") : null,
   downloadJson: IS_DEV ? document.getElementById("downloadJson") : null,
   downloadCsv: IS_DEV ? document.getElementById("downloadCsv") : null,
-  setLoopButton: document.getElementById("setLoopButton"),
-  clearLoopButton: document.getElementById("clearLoopButton"),
-  loopDisplay: document.getElementById("loopDisplay"),
-  loopMarkerA: document.getElementById("loopMarkerA"),
-  loopMarkerB: document.getElementById("loopMarkerB"),
-  settingsButton: document.getElementById("settingsButton"),
-  settingsModal: document.getElementById("settingsModal"),
-  closeSettings: document.getElementById("closeSettings"),
-  themeToggle: document.getElementById("themeToggle"),
-  autoAdvance: document.getElementById("autoAdvance"),
-  showTimeline: document.getElementById("showTimeline"),
+  setLoopButton: document.getElementById("setLoopButton") as HTMLButtonElement,
+  clearLoopButton: document.getElementById("clearLoopButton") as HTMLButtonElement,
+  loopDisplay: document.getElementById("loopDisplay")!,
+  loopMarkerA: document.getElementById("loopMarkerA")!,
+  loopMarkerB: document.getElementById("loopMarkerB")!,
+  settingsButton: document.getElementById("settingsButton") as HTMLButtonElement,
+  settingsModal: document.getElementById("settingsModal")!,
+  closeSettings: document.getElementById("closeSettings") as HTMLButtonElement,
+  themeToggle: document.getElementById("themeToggle") as HTMLButtonElement,
+  autoAdvance: document.getElementById("autoAdvance") as HTMLInputElement,
+  showTimeline: document.getElementById("showTimeline") as HTMLInputElement,
   timelinePanel: document.querySelector(".panel--timeline"),
-  resetSettings: document.getElementById("resetSettings"),
-  tempoSelect: document.getElementById("tempoSelect")
+  resetSettings: document.getElementById("resetSettings") as HTMLButtonElement,
+  tempoSelect: document.getElementById("tempoSelect") as HTMLSelectElement
 };
 
-function setStatus(message) {
+function setStatus(message: string) {
   elements.status.textContent = message;
 }
 
-function midiToNoteName(midi) {
+function midiToNoteName(midi: number) {
   return Tone.Frequency(midi, "midi").toNote();
 }
 
@@ -81,9 +82,9 @@ const settingsModule = initSettings({
   setStatus
 });
 
-let timelineModule;
-let playerModule;
-let engineModule;
+let timelineModule: ReturnType<typeof initTimeline>;
+let playerModule: ReturnType<typeof initPlayer>;
+let engineModule: ReturnType<typeof initAudioEngine>;
 
 playerModule = initPlayer({
   Tone,
@@ -148,7 +149,7 @@ function populateScoreSelect() {
 }
 
 elements.scoreSelect.addEventListener("change", (event) => {
-  const url = event.target.value;
+  const url = (event.target as HTMLSelectElement).value;
   if (!url) return;
 
   localStorage.setItem("selectedScore", url);
@@ -166,12 +167,12 @@ elements.scoreSelect.addEventListener("change", (event) => {
 });
 
 elements.userVoice.addEventListener("change", (event) => {
-  voicesModule.setUserVoice(event.target.value);
+  voicesModule.setUserVoice((event.target as HTMLSelectElement).value);
 });
 
 elements.panInvert.addEventListener("change", (event) => {
-  state.panInverted = event.target.checked;
-  localStorage.setItem("panInverted", state.panInverted);
+  state.panInverted = (event.target as HTMLInputElement).checked;
+  localStorage.setItem("panInverted", String(state.panInverted));
   voicesModule.applyUserVoiceMix();
 });
 
