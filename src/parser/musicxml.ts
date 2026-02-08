@@ -1,5 +1,11 @@
 import * as Tone from "tone";
+import { ok, err, type Result } from "neverthrow";
 import type { TimelineEvent, PartEvent, ParsedPart, ParsedScore } from "../types";
+
+interface ParseError {
+  code: "INVALID_XML" | "PARSE_ERROR";
+  message: string;
+}
 
 type StepName = "C" | "D" | "E" | "F" | "G" | "A" | "B";
 
@@ -252,24 +258,41 @@ function buildEventsForPart(part: Element, name: string, partIndex: number): Par
   };
 }
 
-function parseMusicXML(xmlText: string): ParsedScore {
+function parseMusicXML(xmlText: string): Result<ParsedScore, ParseError> {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, "application/xml");
-  const tempo = getTempo(doc);
-  const title = getTitle(doc);
-  const partNames = getPartNames(doc);
-  const parts: ParsedPart[] = [];
-  const timeline: TimelineEvent[] = [];
 
-  doc.querySelectorAll("part").forEach((part, index) => {
-    const id = part.getAttribute("id") || "Part";
-    const name = partNames.get(id) || id;
-    const built = buildEventsForPart(part, name, index);
-    parts.push(built);
-    timeline.push(...built.timeline);
-  });
+  const parseError = doc.querySelector("parsererror");
+  if (parseError) {
+    return err({
+      code: "INVALID_XML",
+      message: parseError.textContent?.trim() || "Invalid XML"
+    });
+  }
 
-  return { tempo, title, parts, timeline };
+  try {
+    const tempo = getTempo(doc);
+    const title = getTitle(doc);
+    const partNames = getPartNames(doc);
+    const parts: ParsedPart[] = [];
+    const timeline: TimelineEvent[] = [];
+
+    doc.querySelectorAll("part").forEach((part, index) => {
+      const id = part.getAttribute("id") || "Part";
+      const name = partNames.get(id) || id;
+      const built = buildEventsForPart(part, name, index);
+      parts.push(built);
+      timeline.push(...built.timeline);
+    });
+
+    return ok({ tempo, title, parts, timeline });
+  } catch (error) {
+    return err({
+      code: "PARSE_ERROR",
+      message: error instanceof Error ? error.message : "Unknown parse error"
+    });
+  }
 }
 
 export { parseMusicXML, midiToNoteName };
+export type { ParseError };

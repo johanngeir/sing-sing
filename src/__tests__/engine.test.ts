@@ -87,10 +87,20 @@ function createMockDeps(overrides: Record<string, unknown> = {}) {
     elements: elements as any,
     setStatus: vi.fn(),
     parseMusicXML: vi.fn(() => ({
-      tempo: 120,
-      title: "Test Score",
-      parts: [{ name: "Soprano", events: [], timeline: [] }],
-      timeline: []
+      isOk: () => true,
+      isErr: () => false,
+      _unsafeUnwrap: () => ({
+        tempo: 120,
+        title: "Test Score",
+        parts: [{ name: "Soprano", events: [], timeline: [] }],
+        timeline: []
+      }),
+      value: {
+        tempo: 120,
+        title: "Test Score",
+        parts: [{ name: "Soprano", events: [], timeline: [] }],
+        timeline: []
+      }
     })),
     midiToNoteName: vi.fn((midi: number) => `C${Math.floor(midi / 12) - 1}`),
     assignVoicesToNotes: vi.fn(),
@@ -182,7 +192,12 @@ describe("audio engine", () => {
       parts: [{ name: "Soprano", events: [], timeline: [] }],
       timeline: [{ type: "note", midi: 60, timeBeats: 0, durationBeats: 1 }]
     };
-    const deps = createMockDeps({ parseMusicXML: vi.fn(() => parsed) });
+    const deps = createMockDeps({ parseMusicXML: vi.fn(() => ({
+      isOk: () => true,
+      isErr: () => false,
+      _unsafeUnwrap: () => parsed,
+      value: parsed
+    })) });
     deps.assignVoicesToNotes = vi.fn(() => {
       deps.state.voiceCount = 2;
     });

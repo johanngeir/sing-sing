@@ -11,6 +11,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
+    "neverthrow": "^8.2.0",
     "tone": "^14.7.77",
     "zod": "^4.3.6"
   },

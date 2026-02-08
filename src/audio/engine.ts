@@ -1,12 +1,14 @@
 import type * as ToneNs from "tone";
+import { ok, type Result } from "neverthrow";
 import type { AppState, AppElements, VoiceName, VoiceState, ParsedScore, InstrumentKey } from "../types";
+import type { ParseError } from "../parser/musicxml";
 
 interface AudioEngineDeps {
   Tone: typeof ToneNs;
   state: AppState;
   elements: AppElements;
   setStatus: (message: string) => void;
-  parseMusicXML: (xmlText: string) => ParsedScore;
+  parseMusicXML: (xmlText: string) => Result<ParsedScore, ParseError>;
   midiToNoteName: (midi: number) => string;
   assignVoicesToNotes: () => void;
   analyzeVoiceNames: () => VoiceName[];
@@ -166,11 +168,16 @@ function initAudioEngine(deps: AudioEngineDeps) {
     if (elements.timeline) elements.timeline.innerHTML = "";
   }
 
-  async function loadScoreFromText(xmlText: string) {
+  async function loadScoreFromText(xmlText: string): Promise<Result<void, ParseError>> {
     resetState();
     setStatus("Loading score...");
 
-    const parsed = parseMusicXML(xmlText);
+    const parseResult = parseMusicXML(xmlText);
+    if (parseResult.isErr()) {
+      return parseResult.map(() => undefined);
+    }
+
+    const parsed = parseResult.value;
 
     state.originalTempo = Math.round(parsed.tempo);
     state.tempo = state.originalTempo;
@@ -204,6 +211,7 @@ function initAudioEngine(deps: AudioEngineDeps) {
     elements.currentTime.textContent = "0:00 (M. 1)";
     elements.playerBar.hidden = false;
     setStatus(`Loaded: ${parsed.title} (${state.voiceCount} voices)`);
+    return ok(undefined);
   }
 
   return {

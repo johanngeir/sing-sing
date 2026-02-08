@@ -160,7 +160,12 @@ elements.scoreSelect.addEventListener("change", (event) => {
       if (!response.ok) throw new Error("Failed to load score");
       return response.text();
     })
-    .then((xmlText) => engineModule.loadScoreFromText(xmlText))
+    .then(async (xmlText) => {
+      const result = await engineModule.loadScoreFromText(xmlText);
+      if (result.isErr()) {
+        setStatus(`Parse error: ${result.error.message}`);
+      }
+    })
     .catch((error) => {
       setStatus(`Load error: ${error.message}`);
     });

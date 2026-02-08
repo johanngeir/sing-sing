@@ -7,6 +7,13 @@ vi.mock('tone', () => ({
 }));
 
 import { parseMusicXML } from '../parser/musicxml';
+import type { ParsedScore } from '../types';
+
+function parseOk(xml: string): ParsedScore {
+  const result = parseMusicXML(xml);
+  expect(result.isOk()).toBe(true);
+  return result._unsafeUnwrap();
+}
 
 function makeXML(options: {
   title?: string;
@@ -89,7 +96,7 @@ function noteXml(options: {
 describe('parseMusicXML', () => {
   describe('tempo extraction', () => {
     it('uses sound tempo attribute when available', () => {
-      const result = parseMusicXML(makeXML({ tempo: 92 }));
+      const result = parseOk(makeXML({ tempo: 92 }));
       expect(result.tempo).toBe(92);
     });
 
@@ -102,12 +109,12 @@ describe('parseMusicXML', () => {
         ]
       });
 
-      const result = parseMusicXML(xml);
+      const result = parseOk(xml);
       expect(result.tempo).toBe(72);
     });
 
     it('defaults to 120 when no tempo is present', () => {
-      const result = parseMusicXML(makeXML({}));
+      const result = parseOk(makeXML({}));
       expect(result.tempo).toBe(120);
     });
 
@@ -131,14 +138,14 @@ describe('parseMusicXML', () => {
   </part>
 </score-partwise>`;
 
-      const result = parseMusicXML(xml);
+      const result = parseOk(xml);
       expect(result.tempo).toBe(120);
     });
   });
 
   describe('title extraction', () => {
     it('uses work-title when present', () => {
-      const result = parseMusicXML(makeXML({ title: 'Mass in C' }));
+      const result = parseOk(makeXML({ title: 'Mass in C' }));
       expect(result.title).toBe('Mass in C');
     });
 
@@ -152,12 +159,12 @@ describe('parseMusicXML', () => {
   </part>
 </score-partwise>`;
 
-      const result = parseMusicXML(xml);
+      const result = parseOk(xml);
       expect(result.title).toBe('Allegro ma non troppo');
     });
 
     it('defaults to Untitled when no title elements are present', () => {
-      const result = parseMusicXML(makeXML({}));
+      const result = parseOk(makeXML({}));
       expect(result.title).toBe('Untitled');
     });
   });
@@ -177,7 +184,7 @@ describe('parseMusicXML', () => {
         noteXml({ step: 'C', octave: 5 })
       ].join('')}</measure>`;
 
-      const result = parseMusicXML(makeXML({ parts: [{ measures: measure }] }));
+      const result = parseOk(makeXML({ parts: [{ measures: measure }] }));
       const midiValues = result.parts[0].events.map((event) => event.midi);
 
       expect(midiValues).toEqual([60, 62, 64, 65, 67, 69, 71, 61, 61, 72]);
@@ -189,7 +196,7 @@ describe('parseMusicXML', () => {
   describe('rest handling', () => {
     it('creates timeline rest events and excludes rests from part events', () => {
       const measure = `<measure number="1"><attributes><divisions>2</divisions></attributes>${noteXml({ rest: true, duration: 4 })}${noteXml({ step: 'C', octave: 4, duration: 2 })}</measure>`;
-      const result = parseMusicXML(makeXML({ parts: [{ measures: measure }] }));
+      const result = parseOk(makeXML({ parts: [{ measures: measure }] }));
 
       const restEvents = result.timeline.filter((event) => event.type === 'rest');
       expect(restEvents).toHaveLength(1);
@@ -205,7 +212,7 @@ describe('parseMusicXML', () => {
   describe('tie handling', () => {
     it('merges start/stop ties into one combined note event', () => {
       const measure = `<measure number="1"><attributes><divisions>1</divisions></attributes>${noteXml({ step: 'G', octave: 4, duration: 2, tieStart: true })}${noteXml({ step: 'G', octave: 4, duration: 1, tieStop: true })}</measure>`;
-      const result = parseMusicXML(makeXML({ parts: [{ measures: measure }] }));
+      const result = parseOk(makeXML({ parts: [{ measures: measure }] }));
 
       expect(result.parts[0].events).toHaveLength(1);
       expect(result.parts[0].events[0]).toEqual({ timeBeats: 0, durationBeats: 3, midi: 67 });
@@ -217,7 +224,7 @@ describe('parseMusicXML', () => {
 
     it('merges ties across measures and keeps the starting measure metadata', () => {
       const measures = `<measure number="1"><attributes><divisions>1</divisions></attributes>${noteXml({ step: 'C', octave: 4, duration: 2, tieStart: true, voice: '2' })}</measure><measure number="2">${noteXml({ step: 'C', octave: 4, duration: 2, tieStop: true, voice: '2' })}</measure>`;
-      const result = parseMusicXML(makeXML({ parts: [{ measures }] }));
+      const result = parseOk(makeXML({ parts: [{ measures }] }));
 
       expect(result.parts[0].events).toHaveLength(1);
       expect(result.parts[0].events[0]).toEqual({ timeBeats: 0, durationBeats: 4, midi: 60 });
@@ -230,7 +237,7 @@ describe('parseMusicXML', () => {
   describe('chord handling', () => {
     it('keeps chord notes on the same time and increments chordIndex', () => {
       const measure = `<measure number="1"><attributes><divisions>1</divisions></attributes>${noteXml({ step: 'C', octave: 4, duration: 2 })}${noteXml({ step: 'E', octave: 4, duration: 2, chord: true })}${noteXml({ step: 'G', octave: 4, duration: 2, chord: true })}${noteXml({ step: 'A', octave: 4, duration: 1 })}</measure>`;
-      const result = parseMusicXML(makeXML({ parts: [{ measures: measure }] }));
+      const result = parseOk(makeXML({ parts: [{ measures: measure }] }));
       const noteTimeline = result.timeline.filter((event) => event.type === 'note');
 
       expect(result.parts[0].events).toHaveLength(4);
@@ -248,7 +255,7 @@ describe('parseMusicXML', () => {
   describe('grace note skipping', () => {
     it('ignores grace notes entirely', () => {
       const measure = `<measure number="1"><attributes><divisions>1</divisions></attributes>${noteXml({ step: 'D', octave: 5, duration: 1, grace: true })}${noteXml({ step: 'C', octave: 5, duration: 1 })}</measure>`;
-      const result = parseMusicXML(makeXML({ parts: [{ measures: measure }] }));
+      const result = parseOk(makeXML({ parts: [{ measures: measure }] }));
 
       expect(result.parts[0].events).toHaveLength(1);
       expect(result.parts[0].events[0].midi).toBe(72);
@@ -261,7 +268,7 @@ describe('parseMusicXML', () => {
     it('updates time cursor with backup and forward durations', () => {
       const measure = `<measure number="1"><attributes><divisions>1</divisions></attributes>${noteXml({ step: 'C', octave: 4, duration: 2 })}<backup><duration>1</duration></backup>${noteXml({ step: 'D', octave: 4, duration: 1 })}<forward><duration>2</duration></forward>${noteXml({ step: 'E', octave: 4, duration: 1 })}</measure>`;
 
-      const result = parseMusicXML(makeXML({ parts: [{ measures: measure }] }));
+      const result = parseOk(makeXML({ parts: [{ measures: measure }] }));
       expect(result.parts[0].events.map((event) => event.timeBeats)).toEqual([0, 1, 4]);
       expect(result.parts[0].events.map((event) => event.midi)).toEqual([60, 62, 64]);
     });
@@ -269,7 +276,7 @@ describe('parseMusicXML', () => {
 
   describe('multi-part scores', () => {
     it('parses multiple parts in source order with correct names and indices', () => {
-      const result = parseMusicXML(
+      const result = parseOk(
         makeXML({
           parts: [
             { id: 'P1', name: 'Soprano', measures: `<measure number="1">${noteXml({ step: 'C', octave: 5 })}</measure>` },
@@ -294,7 +301,7 @@ describe('parseMusicXML', () => {
 
   describe('SATB and TTBB structures', () => {
     it('returns four named parts for SATB layouts', () => {
-      const result = parseMusicXML(
+      const result = parseOk(
         makeXML({
           parts: [
             { id: 'P1', name: 'Soprano', measures: `<measure number="1">${noteXml({ step: 'C', octave: 5 })}</measure>` },
@@ -310,7 +317,7 @@ describe('parseMusicXML', () => {
     });
 
     it('captures two voices per part for TTBB layouts', () => {
-      const result = parseMusicXML(
+      const result = parseOk(
         makeXML({
           parts: [
             {
@@ -349,11 +356,33 @@ describe('parseMusicXML', () => {
       'computes beats from duration/divisions for divisions=$divisions',
       ({ divisions, duration, expectedBeats }) => {
         const measures = `<measure number="1"><attributes><divisions>${divisions}</divisions></attributes>${noteXml({ step: 'C', octave: 4, duration })}</measure>`;
-        const result = parseMusicXML(makeXML({ parts: [{ measures }] }));
+        const result = parseOk(makeXML({ parts: [{ measures }] }));
 
         expect(result.parts[0].events).toHaveLength(1);
         expect(result.parts[0].events[0].durationBeats).toBe(expectedBeats);
       }
     );
+  });
+
+  describe('error handling', () => {
+    it('returns Err for non-XML input', () => {
+      const result = parseMusicXML('not xml at all');
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe('INVALID_XML');
+      }
+    });
+
+    it('returns Ok with empty parts when no parts are found', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list></part-list>
+</score-partwise>`;
+      const result = parseMusicXML(xml);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.parts).toHaveLength(0);
+      }
+    });
   });
 });
