@@ -1,4 +1,43 @@
-function initVoices(deps) {
+import type * as ToneNs from "tone";
+import type { AppState, AppElements, TimelineEvent, VoiceState, InstrumentKey, InstrumentConfig, VoiceName } from "../types";
+
+interface VoicesDeps {
+  Tone: typeof ToneNs;
+  state: AppState;
+  elements: AppElements;
+  INSTRUMENTS: Record<InstrumentKey, InstrumentConfig>;
+  saveVoiceInstrument: (shortName: string, instrumentKey: string) => void;
+  setStoredUserVoice: (voice: string) => void;
+  getStoredUserVoice: () => string;
+}
+
+interface VoicesApi {
+  renderVoices: () => void;
+  createVoiceState: (voiceIndex: number, voiceName: VoiceName, instrumentKey?: InstrumentKey) => VoiceState;
+  applyVoiceSettings: (voice: VoiceState) => void;
+  assignVoicesToNotes: () => void;
+  analyzeVoiceNames: () => VoiceName[];
+  parseVoicesString: (voicesStr?: string) => VoiceName[] | null;
+  mapUserVoiceToScore: (userVoice: string, scoreVoices: Array<{ shortName: string }>) => string | null;
+  applyUserVoiceMix: () => void;
+  setUserVoice: (voice: string) => void;
+  getUserVoice: () => string;
+  formatPan: (pan: number) => string;
+}
+
+interface PartGroup {
+  events: TimelineEvent[];
+  xmlVoice: number;
+  fromChordSplit: boolean;
+}
+
+interface VoiceStats {
+  index: number;
+  pitches: number[];
+  median: number;
+}
+
+function initVoices(deps: VoicesDeps): VoicesApi {
   const {
     Tone,
     state,
@@ -9,11 +48,11 @@ function initVoices(deps) {
     getStoredUserVoice
   } = deps;
 
-  function parseVoicesString(voicesStr) {
+  function parseVoicesString(voicesStr?: string): VoiceName[] | null {
     if (!voicesStr) return null;
 
-    const counts = { S: 0, A: 0, T: 0, B: 0 };
-    const result = [];
+    const counts: Record<string, number> = { S: 0, A: 0, T: 0, B: 0 };
+    const result: VoiceName[] = [];
 
     for (const char of voicesStr.toUpperCase()) {
       if (counts[char] !== undefined) {
@@ -21,12 +60,12 @@ function initVoices(deps) {
       }
     }
 
-    const needsNumber = {};
+    const needsNumber: Record<string, boolean> = {};
     for (const [type, count] of Object.entries(counts)) {
       needsNumber[type] = count > 1;
     }
 
-    const currentNum = { S: 0, A: 0, T: 0, B: 0 };
+    const currentNum: Record<string, number> = { S: 0, A: 0, T: 0, B: 0 };
     for (const char of voicesStr.toUpperCase()) {
       if (counts[char] !== undefined) {
         currentNum[char]++;
@@ -41,12 +80,12 @@ function initVoices(deps) {
     return result;
   }
 
-  function fullName(char) {
-    const names = { S: "Soprano", A: "Alto", T: "Tenor", B: "Bass" };
-    return names[char] || char;
+  function fullName(char: string): string {
+    const names: Record<"S" | "A" | "T" | "B", string> = { S: "Soprano", A: "Alto", T: "Tenor", B: "Bass" };
+    return char in names ? names[char as keyof typeof names] : char;
   }
 
-  function mapUserVoiceToScore(userVoice, scoreVoices) {
+  function mapUserVoiceToScore(userVoice: string, scoreVoices: Array<{ shortName: string }>): string | null {
     const userBase = userVoice.charAt(0);
     const userNum = userVoice.length > 1 ? parseInt(userVoice.charAt(1), 10) : 1;
 
@@ -66,7 +105,7 @@ function initVoices(deps) {
     return null;
   }
 
-  function applyUserVoiceMix() {
+  function applyUserVoiceMix(): void {
     if (state.voices.length === 0) return;
 
     const mappedVoice = mapUserVoiceToScore(state.userVoice, state.voices);
@@ -86,7 +125,7 @@ function initVoices(deps) {
     renderVoices();
   }
 
-  function createVoiceState(voiceIndex, voiceName, instrumentKey = "piano") {
+  function createVoiceState(voiceIndex: number, voiceName: VoiceName, instrumentKey: InstrumentKey = "piano"): VoiceState {
     const instrument = INSTRUMENTS[instrumentKey] || INSTRUMENTS.piano;
     const sampler = new Tone.Sampler({
       urls: instrument.urls,
@@ -112,13 +151,13 @@ function initVoices(deps) {
     };
   }
 
-  function applyVoiceSettings(voice) {
+  function applyVoiceSettings(voice: VoiceState): void {
     const targetGain = voice.muted ? 0 : voice.volume;
     voice.gain.gain.rampTo(targetGain, 0.05);
     voice.panner.pan.rampTo(voice.pan, 0.05);
   }
 
-  function renderVoices() {
+  function renderVoices(): void {
     elements.parts.innerHTML = "";
 
     if (state.voices.length === 0) return;
@@ -134,7 +173,7 @@ function initVoices(deps) {
     }
   }
 
-  function renderSimpleVoiceControls(userVoice, otherVoiceShortNames) {
+  function renderSimpleVoiceControls(userVoice: VoiceState | undefined, otherVoiceShortNames: string[]): void {
     const container = elements.parts;
 
     if (userVoice) {
@@ -181,13 +220,13 @@ function initVoices(deps) {
       </div>
     `;
 
-      const instrumentInput = row.querySelector('[data-role="instrument"]');
-      const muteInput = row.querySelector('[data-role="mute"]');
-      const volumeInput = row.querySelector('[data-role="volume"]');
-      const panInput = row.querySelector('[data-role="pan"]');
+      const instrumentInput = row.querySelector('[data-role="instrument"]') as HTMLSelectElement;
+      const muteInput = row.querySelector('[data-role="mute"]') as HTMLInputElement;
+      const volumeInput = row.querySelector('[data-role="volume"]') as HTMLInputElement;
+      const panInput = row.querySelector('[data-role="pan"]') as HTMLInputElement;
 
-      instrumentInput.addEventListener("change", (event) => {
-        const newInstrumentKey = event.target.value;
+      instrumentInput.addEventListener("change", (event: Event) => {
+        const newInstrumentKey = (event.target as HTMLSelectElement).value as InstrumentKey;
         if (!newInstrumentKey) return;
 
         for (const shortName of otherVoiceShortNames) {
@@ -213,17 +252,17 @@ function initVoices(deps) {
         }
       });
 
-      muteInput.addEventListener("change", (event) => {
+      muteInput.addEventListener("change", (event: Event) => {
         for (const shortName of otherVoiceShortNames) {
           const voice = state.voices.find(v => v.shortName === shortName);
           if (!voice) continue;
-          voice.muted = event.target.checked;
+          voice.muted = (event.target as HTMLInputElement).checked;
           applyVoiceSettings(voice);
         }
       });
 
-      volumeInput.addEventListener("input", (event) => {
-        const value = Number(event.target.value);
+      volumeInput.addEventListener("input", (event: Event) => {
+        const value = Number((event.target as HTMLInputElement).value);
         volumeInput.title = `${Math.round(value * 100)}%`;
         for (const shortName of otherVoiceShortNames) {
           const voice = state.voices.find(v => v.shortName === shortName);
@@ -233,8 +272,8 @@ function initVoices(deps) {
         }
       });
 
-      panInput.addEventListener("input", (event) => {
-        const value = Number(event.target.value);
+      panInput.addEventListener("input", (event: Event) => {
+        const value = Number((event.target as HTMLInputElement).value);
         panInput.title = formatPan(value);
         for (const shortName of otherVoiceShortNames) {
           const voice = state.voices.find(v => v.shortName === shortName);
@@ -258,7 +297,7 @@ function initVoices(deps) {
     container.appendChild(toggleBtn);
   }
 
-  function renderAdvancedVoiceControls() {
+  function renderAdvancedVoiceControls(): void {
     const container = elements.parts;
 
     for (const voice of state.voices) {
@@ -276,8 +315,8 @@ function initVoices(deps) {
     container.appendChild(toggleBtn);
   }
 
-  function createVoiceControlRow(voiceShortName, label, isAdvanced) {
-    const voice = state.voices.find(v => v.shortName === voiceShortName);
+  function createVoiceControlRow(voiceShortName: string, label: string, isAdvanced: boolean): HTMLDivElement {
+    const voice = state.voices.find(v => v.shortName === voiceShortName)!;
     const row = document.createElement("div");
     row.className = "part";
     row.dataset.voice = voiceShortName;
@@ -316,23 +355,23 @@ function initVoices(deps) {
     </div>
   `;
 
-    const muteInput = row.querySelector('[data-role="mute"]');
-    const instrumentSelect = row.querySelector('[data-role="instrument"]');
-    const volumeInput = row.querySelector('[data-role="volume"]');
-    const panInput = row.querySelector('[data-role="pan"]');
+    const muteInput = row.querySelector('[data-role="mute"]') as HTMLInputElement;
+    const instrumentSelect = row.querySelector('[data-role="instrument"]') as HTMLSelectElement;
+    const volumeInput = row.querySelector('[data-role="volume"]') as HTMLInputElement;
+    const panInput = row.querySelector('[data-role="pan"]') as HTMLInputElement;
 
-    muteInput.addEventListener("change", (event) => {
+    muteInput.addEventListener("change", (event: Event) => {
       const v = state.voices.find(v => v.shortName === voiceShortName);
       if (!v) return;
-      v.muted = event.target.checked;
+      v.muted = (event.target as HTMLInputElement).checked;
       applyVoiceSettings(v);
     });
 
-    instrumentSelect.addEventListener("change", (event) => {
+    instrumentSelect.addEventListener("change", (event: Event) => {
       const v = state.voices.find(v => v.shortName === voiceShortName);
       if (!v) return;
 
-      const newInstrumentKey = event.target.value;
+      const newInstrumentKey = (event.target as HTMLSelectElement).value as InstrumentKey;
       if (newInstrumentKey === v.instrument) return;
 
       const currentVolume = v.volume;
@@ -361,18 +400,18 @@ function initVoices(deps) {
       saveVoiceInstrument(voiceShortName, newInstrumentKey);
     });
 
-    volumeInput.addEventListener("input", (event) => {
+    volumeInput.addEventListener("input", (event: Event) => {
       const v = state.voices.find(v => v.shortName === voiceShortName);
       if (!v) return;
-      v.volume = Number(event.target.value);
+      v.volume = Number((event.target as HTMLInputElement).value);
       volumeInput.title = `${Math.round(v.volume * 100)}%`;
       applyVoiceSettings(v);
     });
 
-    panInput.addEventListener("input", (event) => {
+    panInput.addEventListener("input", (event: Event) => {
       const v = state.voices.find(v => v.shortName === voiceShortName);
       if (!v) return;
-      v.pan = Number(event.target.value);
+      v.pan = Number((event.target as HTMLInputElement).value);
       panInput.title = formatPan(v.pan);
       applyVoiceSettings(v);
     });
@@ -381,13 +420,13 @@ function initVoices(deps) {
     return row;
   }
 
-  function formatPan(pan) {
+  function formatPan(pan: number): string {
     if (Math.abs(pan) < 0.05) return "Center";
     const pct = Math.round(Math.abs(pan) * 100);
     return pan < 0 ? `${pct}% L` : `${pct}% R`;
   }
 
-  function assignVoicesToNotes() {
+  function assignVoicesToNotes(): void {
     const events = state.timeline.filter((e) =>
       (e.type === "note" && e.midi !== undefined) || e.type === "rest"
     );
@@ -398,13 +437,13 @@ function initVoices(deps) {
 
     const expectedVoiceCount = state.currentScore?.voices?.length || 0;
 
-    const voiceGroups = new Map();
+    const voiceGroups = new Map<string, TimelineEvent[]>();
     for (const event of events) {
       const key = `${event.partIndex}:${event.voice}`;
       if (!voiceGroups.has(key)) {
         voiceGroups.set(key, []);
       }
-      voiceGroups.get(key).push(event);
+      voiceGroups.get(key)!.push(event);
     }
 
     const baseGroupCount = voiceGroups.size;
@@ -422,22 +461,22 @@ function initVoices(deps) {
       return;
     }
 
-    const partGroups = new Map();
+    const partGroups = new Map<number, PartGroup[]>();
 
     for (const [key, groupEvents] of voiceGroups.entries()) {
       const [partStr, voiceStr] = key.split(':');
-      const partIndex = parseInt(partStr);
-      const xmlVoice = parseInt(voiceStr);
-      const notes = groupEvents.filter(e => e.type === "note");
+      const partIndex = parseInt(partStr, 10);
+      const xmlVoice = parseInt(voiceStr, 10);
+      const notes = groupEvents.filter(e => e.type === "note" && e.midi !== undefined);
       const rests = groupEvents.filter(e => e.type === "rest");
 
-      const timeMap = new Map();
+      const timeMap = new Map<number, TimelineEvent[]>();
       for (const note of notes) {
         const t = note.timeBeats;
         if (!timeMap.has(t)) {
           timeMap.set(t, []);
         }
-        timeMap.get(t).push(note);
+        timeMap.get(t)!.push(note);
       }
 
       let maxChordSize = 0;
@@ -450,9 +489,9 @@ function initVoices(deps) {
       }
 
       if (maxChordSize <= 1) {
-        partGroups.get(partIndex).push({ events: groupEvents, xmlVoice, fromChordSplit: false });
+        partGroups.get(partIndex)!.push({ events: groupEvents, xmlVoice, fromChordSplit: false });
       } else {
-        const subGroups = [];
+        const subGroups: TimelineEvent[][] = [];
         for (let i = 0; i < maxChordSize; i++) {
           subGroups.push([]);
         }
@@ -460,7 +499,7 @@ function initVoices(deps) {
         // First pass: assign notes from chords to establish pitch ranges
         for (const [t, notesAtTime] of timeMap.entries()) {
           if (notesAtTime.length > 1) {
-            notesAtTime.sort((a, b) => b.midi - a.midi);
+            notesAtTime.sort((a, b) => (b.midi as number) - (a.midi as number));
             for (let i = 0; i < notesAtTime.length; i++) {
               subGroups[i].push(notesAtTime[i]);
             }
@@ -468,9 +507,9 @@ function initVoices(deps) {
         }
 
         // Calculate median pitch for each subgroup
-        const subGroupMedians = subGroups.map(sg => {
+        const subGroupMedians = subGroups.map((sg: TimelineEvent[]) => {
           if (sg.length === 0) return 0;
-          const pitches = sg.map(n => n.midi).sort((a, b) => a - b);
+          const pitches = sg.map(n => n.midi as number).sort((a, b) => a - b);
           const mid = Math.floor(pitches.length / 2);
           return pitches.length % 2 === 0 ? (pitches[mid - 1] + pitches[mid]) / 2 : pitches[mid];
         });
@@ -483,7 +522,7 @@ function initVoices(deps) {
             let bestDist = Infinity;
             for (let i = 0; i < maxChordSize; i++) {
               if (subGroupMedians[i] === 0) continue;
-              const dist = Math.abs(note.midi - subGroupMedians[i]);
+              const dist = Math.abs((note.midi as number) - subGroupMedians[i]);
               if (dist < bestDist) {
                 bestDist = dist;
                 bestIdx = i;
@@ -499,7 +538,7 @@ function initVoices(deps) {
 
         for (const subGroup of subGroups) {
           if (subGroup.length > 0) {
-            partGroups.get(partIndex).push({ events: subGroup, xmlVoice, fromChordSplit: true });
+            partGroups.get(partIndex)!.push({ events: subGroup, xmlVoice, fromChordSplit: true });
           }
         }
       }
@@ -509,9 +548,9 @@ function initVoices(deps) {
       if (groups.length <= 1) continue;
 
       const groupStats = groups.map((g, idx) => {
-        const notes = g.events.filter(e => e.type === "note");
+        const notes = g.events.filter(e => e.type === "note" && e.midi !== undefined);
         if (notes.length === 0) return { idx, median: 0, count: 0, xmlVoice: g.xmlVoice, fromChordSplit: g.fromChordSplit };
-        const pitches = notes.map(n => n.midi).sort((a, b) => a - b);
+        const pitches = notes.map(n => n.midi as number).sort((a, b) => a - b);
         const mid = Math.floor(pitches.length / 2);
         const median = pitches.length % 2 === 0
           ? (pitches[mid - 1] + pitches[mid]) / 2
@@ -565,18 +604,18 @@ function initVoices(deps) {
     }
   }
 
-  function analyzeVoiceNames() {
+  function analyzeVoiceNames(): VoiceName[] {
     const notes = state.timeline.filter((e) => e.type === "note" && e.midi !== undefined);
     if (notes.length === 0 || state.voiceCount === 0) return [];
 
-    const voiceStats = [];
+    const voiceStats: VoiceStats[] = [];
     for (let i = 0; i < state.voiceCount; i++) {
-      voiceStats.push({ index: i, pitches: [] });
+      voiceStats.push({ index: i, pitches: [], median: 0 });
     }
 
     for (const note of notes) {
       if (note.voiceIndex !== undefined) {
-        voiceStats[note.voiceIndex].pitches.push(note.midi);
+        voiceStats[note.voiceIndex]!.pitches.push(note.midi!);
       }
     }
 
@@ -593,7 +632,7 @@ function initVoices(deps) {
     }
 
     const sorted = [...voiceStats].sort((a, b) => b.median - a.median);
-    const names = new Array(state.voiceCount);
+    const names: VoiceName[] = new Array(state.voiceCount);
 
     const parsedVoices = parseVoicesString(state.currentScore?.voices);
 
@@ -614,11 +653,11 @@ function initVoices(deps) {
     return names;
   }
 
-  function getUserVoice() {
+  function getUserVoice(): string {
     return getStoredUserVoice();
   }
 
-  function setUserVoice(voice) {
+  function setUserVoice(voice: string): void {
     setStoredUserVoice(voice);
     elements.userVoice.value = voice;
     if (state.scoreReady) {

@@ -1,4 +1,42 @@
-function initPlayer(deps) {
+import type * as ToneNs from "tone";
+import type { AppState, AppElements, LoopMode, TimelineRow } from "../types";
+
+interface TimelineRowsResult {
+  rows: TimelineRow[];
+  voiceCount: number;
+}
+
+interface PlayerDeps {
+  Tone: typeof ToneNs;
+  state: AppState;
+  elements: AppElements;
+  setStatus: (message: string) => void;
+  pausePlayback: () => void;
+  startPlayback: (fromBeats?: number) => Promise<void>;
+  stopPlayback: () => void;
+  setTempo: (value: number) => void;
+  renderTimeline: () => void;
+  buildTimelineRows: () => TimelineRowsResult;
+  loadNextScore: () => void;
+}
+
+interface PlayerApi {
+  updatePlaybackHighlight: () => void;
+  formatTime: (seconds: number) => string;
+  formatDuration: (durationBeats: number) => string;
+  formatNoteShort: (midi: number, durationBeats: number) => string;
+  formatRestShort: (durationBeats: number) => string;
+  getMeasureStartSeconds: (measureNumber: number) => number | null;
+  getTotalBeats: () => number;
+  getTotalDuration: () => number;
+  beatsToSeconds: (beats: number) => number;
+  secondsToBeats: (seconds: number) => number;
+  getCurrentMeasure: () => number;
+  getTotalMeasures: () => number;
+  downloadFile: (filename: string, content: string) => void;
+}
+
+function initPlayer(deps: PlayerDeps): PlayerApi {
   const {
     Tone,
     state,
@@ -13,14 +51,14 @@ function initPlayer(deps) {
     loadNextScore
   } = deps;
 
-  function formatTime(seconds) {
+  function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   }
 
-  function formatDuration(durationBeats) {
-    const durationMap = {
+  function formatDuration(durationBeats: number): string {
+    const durationMap: Record<number, string> = {
       4: "/1",
       3: "/2.",
       2: "/2",
@@ -35,16 +73,16 @@ function initPlayer(deps) {
     return durationMap[durationBeats] || `/${(4 / durationBeats).toFixed(1)}`;
   }
 
-  function formatNoteShort(midi, durationBeats) {
+  function formatNoteShort(midi: number, durationBeats: number): string {
     const noteName = Tone.Frequency(midi, "midi").toNote();
     return `${noteName}${formatDuration(durationBeats)}`;
   }
 
-  function formatRestShort(durationBeats) {
+  function formatRestShort(durationBeats: number): string {
     return `R${formatDuration(durationBeats)}`;
   }
 
-  function getMeasureStartSeconds(measureNumber) {
+  function getMeasureStartSeconds(measureNumber: number): number | null {
     for (const row of state.timelineRows) {
       if (row.measure === measureNumber) {
         return row.timeSeconds;
@@ -53,25 +91,25 @@ function initPlayer(deps) {
     return null;
   }
 
-  function getTotalBeats() {
+  function getTotalBeats(): number {
     if (state.timelineRows.length === 0) return 0;
     const lastRow = state.timelineRows[state.timelineRows.length - 1];
     return lastRow.timeBeats + 4;
   }
 
-  function getTotalDuration() {
+  function getTotalDuration(): number {
     return (getTotalBeats() * 60) / state.tempo;
   }
 
-  function beatsToSeconds(beats) {
+  function beatsToSeconds(beats: number): number {
     return (beats * 60) / state.tempo;
   }
 
-  function secondsToBeats(seconds) {
+  function secondsToBeats(seconds: number): number {
     return (seconds * state.tempo) / 60;
   }
 
-  function getCurrentMeasure() {
+  function getCurrentMeasure(): number {
     const currentSeconds = Tone.Transport.seconds;
     for (let i = state.timelineRows.length - 1; i >= 0; i--) {
       if (state.timelineRows[i].timeSeconds <= currentSeconds) {
@@ -81,13 +119,13 @@ function initPlayer(deps) {
     return 0;
   }
 
-  function getTotalMeasures() {
+  function getTotalMeasures(): number {
     if (state.timelineRows.length === 0) return 0;
     const lastRow = state.timelineRows[state.timelineRows.length - 1];
     return lastRow.measure + 1;
   }
 
-  function updatePlaybackHighlight() {
+  function updatePlaybackHighlight(): void {
     if (!state.isPlaying) {
       if (state.playbackRAF) {
         cancelAnimationFrame(state.playbackRAF);
@@ -128,16 +166,16 @@ function initPlayer(deps) {
     });
 
     if (!state.isSeeking) {
-      elements.seekBar.value = currentBeats;
+      elements.seekBar.value = String(currentBeats);
     }
 
     const currentMeasure = getCurrentMeasure();
     elements.currentTime.textContent = `${formatTime(currentSeconds)} (M. ${currentMeasure + 1})`;
 
     // Check loop bounds
-    if (state.loopMode === "active" && state.loopBSeconds !== null) {
+    if ((state.loopMode as LoopMode) === "active" && state.loopBSeconds !== null) {
       if (currentSeconds >= state.loopBSeconds) {
-        Tone.Transport.seconds = state.loopASeconds;
+        Tone.Transport.seconds = state.loopASeconds as number;
         state.playbackRAF = requestAnimationFrame(updatePlaybackHighlight);
         return;
       }
@@ -156,7 +194,7 @@ function initPlayer(deps) {
     state.playbackRAF = requestAnimationFrame(updatePlaybackHighlight);
   }
 
-  function downloadFile(filename, content) {
+  function downloadFile(filename: string, content: string): void {
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -168,7 +206,7 @@ function initPlayer(deps) {
     URL.revokeObjectURL(url);
   }
 
-  function wirePlayerEvents() {
+  function wirePlayerEvents(): void {
     elements.playPauseButton.addEventListener("click", async () => {
       if (state.isPlaying) {
         pausePlayback();
@@ -177,7 +215,8 @@ function initPlayer(deps) {
         try {
           await startPlayback(currentBeats > 0 ? currentBeats : 0);
         } catch (error) {
-          setStatus(`Playback error: ${error.message}`);
+          const message = error instanceof Error ? error.message : String(error);
+          setStatus(`Playback error: ${message}`);
         }
       }
     });
@@ -212,7 +251,7 @@ function initPlayer(deps) {
     elements.skipBackButton.addEventListener("click", () => {
       const currentMeasure = getCurrentMeasure();
       if (currentMeasure > 0) {
-        Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure - 1);
+        Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure - 1) as number;
       } else {
         Tone.Transport.seconds = 0;
       }
@@ -222,7 +261,7 @@ function initPlayer(deps) {
       const currentMeasure = getCurrentMeasure();
       const totalMeasures = getTotalMeasures();
       if (currentMeasure < totalMeasures - 1) {
-        Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure + 1);
+        Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure + 1) as number;
       }
       // If at last measure, do nothing (stay at current position)
     });
@@ -238,7 +277,7 @@ function initPlayer(deps) {
 
         // Show marker A
         const totalDuration = getTotalDuration();
-        const percentage = (state.loopASeconds / totalDuration) * 100;
+        const percentage = ((state.loopASeconds as number) / totalDuration) * 100;
         elements.loopMarkerA.style.left = `${percentage}%`;
         elements.loopMarkerA.hidden = false;
 
@@ -252,17 +291,17 @@ function initPlayer(deps) {
         let loopBSeconds = getMeasureStartSeconds(currentMeasure);
 
         // Auto-swap if B < A
-        if (loopBSeconds < state.loopASeconds) {
-          const tempMeasure = state.loopA;
-          const tempSeconds = state.loopASeconds;
+        if ((loopBSeconds as number) < (state.loopASeconds as number)) {
+          const tempMeasure = state.loopA!;
+          const tempSeconds = state.loopASeconds!;
           state.loopA = loopB;
-          state.loopASeconds = loopBSeconds;
+          state.loopASeconds = loopBSeconds as number;
           loopB = tempMeasure;
-          loopBSeconds = tempSeconds;
+          loopBSeconds = tempSeconds as number;
 
           // Update marker A position
           const totalDuration = getTotalDuration();
-          const percentageA = (state.loopASeconds / totalDuration) * 100;
+          const percentageA = ((state.loopASeconds as number) / totalDuration) * 100;
           elements.loopMarkerA.style.left = `${percentageA}%`;
         }
 
@@ -272,12 +311,12 @@ function initPlayer(deps) {
 
         // Show marker B
         const totalDuration = getTotalDuration();
-        const percentageB = (state.loopBSeconds / totalDuration) * 100;
+        const percentageB = ((state.loopBSeconds as number) / totalDuration) * 100;
         elements.loopMarkerB.style.left = `${percentageB}%`;
         elements.loopMarkerB.hidden = false;
 
         // Show loop display
-        elements.loopDisplay.textContent = `Loop: M.${state.loopA + 1} → M.${state.loopB + 1}`;
+        elements.loopDisplay.textContent = `Loop: M.${state.loopA! + 1} → M.${state.loopB + 1}`;
         elements.loopDisplay.hidden = false;
         elements.clearLoopButton.hidden = false;
 
@@ -306,8 +345,8 @@ function initPlayer(deps) {
       elements.setLoopButton.title = "Set loop point";
     });
 
-    elements.tempoSelect.addEventListener("change", (event) => {
-      const multiplier = parseFloat(event.target.value);
+    elements.tempoSelect.addEventListener("change", (event: Event) => {
+      const multiplier = parseFloat((event.target as HTMLSelectElement).value);
       const newTempo = Math.round(state.originalTempo * multiplier);
       setTempo(newTempo);
       renderTimeline();
@@ -344,19 +383,20 @@ function initPlayer(deps) {
     }
 
     if (elements.timeline) {
-      elements.timeline.addEventListener("click", (event) => {
-        const row = event.target.closest(".timeline__row:not(.timeline__row--header)");
+      elements.timeline.addEventListener("click", (event: Event) => {
+        const row = (event.target as HTMLElement).closest(".timeline__row:not(.timeline__row--header)") as HTMLElement | null;
         if (!row) return;
 
-        const timeBeats = parseFloat(row.dataset.timeBeats);
+        const timeBeats = parseFloat(row.dataset.timeBeats || "");
         if (!Number.isFinite(timeBeats)) return;
 
         const timeSeconds = (timeBeats * 60) / state.tempo;
         Tone.Transport.seconds = timeSeconds;
 
         if (!state.isPlaying) {
-          startPlayback().catch((error) => {
-            setStatus(`Playback error: ${error.message}`);
+          startPlayback().catch((error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            setStatus(`Playback error: ${message}`);
           });
         }
       });

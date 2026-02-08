@@ -1,9 +1,11 @@
-function createState() {
+import type { AppState, LoopMode } from "./types.ts";
+
+function createState(): AppState {
   return {
     currentScore: null,
     userVoice: localStorage.getItem("userVoice") || "T1",
     panInverted: localStorage.getItem("panInverted") === "true",
-    theme: localStorage.getItem("theme") || "light",
+    theme: (localStorage.getItem("theme") === "dark" ? "dark" : "light"),
     autoAdvance: localStorage.getItem("autoAdvance") === "true",
     showTimeline: localStorage.getItem("showTimeline") !== "false",
     tempo: 120,
@@ -24,32 +26,32 @@ function createState() {
     loopB: null,
     loopASeconds: null,
     loopBSeconds: null,
-    loopMode: "inactive",
+    loopMode: "inactive" as LoopMode,
     isSeeking: false
   };
 }
 
-const state = createState();
+const state: AppState = createState();
 
-function getVoiceInstruments() {
+function getVoiceInstruments(): Record<string, string> {
   try {
-    return JSON.parse(localStorage.getItem("voiceInstruments")) || {};
+    return JSON.parse(localStorage.getItem("voiceInstruments") || "{}") || {};
   } catch {
     return {};
   }
 }
 
-function saveVoiceInstrument(shortName, instrumentKey) {
+function saveVoiceInstrument(shortName: string, instrumentKey: string): void {
   const instruments = getVoiceInstruments();
   instruments[shortName] = instrumentKey;
   localStorage.setItem("voiceInstruments", JSON.stringify(instruments));
 }
 
-function getUserVoice() {
+function getUserVoice(): string {
   return state.userVoice;
 }
 
-function setUserVoice(voice) {
+function setUserVoice(voice: string): void {
   state.userVoice = voice;
   localStorage.setItem("userVoice", voice);
 }

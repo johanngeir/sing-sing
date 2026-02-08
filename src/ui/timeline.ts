@@ -1,4 +1,23 @@
-function initTimeline(deps) {
+import type { AppState, AppElements, TimelineEvent, TimelineRow, VoiceCell } from "../types";
+
+interface TimelineRowsResult {
+  rows: TimelineRow[];
+  voiceCount: number;
+}
+
+interface TimelineDeps {
+  state: AppState;
+  elements: AppElements;
+  formatNoteShort: (midi: number, durationBeats: number) => string;
+  formatRestShort: (durationBeats: number) => string;
+}
+
+interface TimelineApi {
+  buildTimelineRows: () => TimelineRowsResult;
+  renderTimeline: () => void;
+}
+
+function initTimeline(deps: TimelineDeps): TimelineApi {
   const {
     state,
     elements,
@@ -6,35 +25,35 @@ function initTimeline(deps) {
     formatRestShort
   } = deps;
 
-  function buildTimelineRows() {
-    const events = state.timeline.filter((e) =>
+  function buildTimelineRows(): TimelineRowsResult {
+    const events = state.timeline.filter((e: TimelineEvent) =>
       (e.type === "note" && e.midi !== undefined) || e.type === "rest"
     );
     if (events.length === 0) return { rows: [], voiceCount: 0 };
 
-    const grouped = new Map();
+    const grouped = new Map<string, { timeBeats: number; measure: number; events: TimelineEvent[] }>();
     for (const entry of events) {
       if (entry.voiceIndex === undefined) continue;
       const key = entry.timeBeats.toFixed(4);
       if (!grouped.has(key)) {
         grouped.set(key, { timeBeats: entry.timeBeats, measure: entry.measure, events: [] });
       }
-      grouped.get(key).events.push(entry);
+      grouped.get(key)!.events.push(entry);
     }
 
     const rows = Array.from(grouped.values())
       .sort((a, b) => a.timeBeats - b.timeBeats)
       .map((group) => {
-        const voiceColumns = new Array(state.voiceCount).fill(null);
+        const voiceColumns: Array<VoiceCell | null> = new Array(state.voiceCount).fill(null);
 
         for (const event of group.events) {
           if (event.voiceIndex !== undefined) {
             if (event.type === "note") {
               voiceColumns[event.voiceIndex] = {
                 type: "note",
-                midi: event.midi,
+                midi: event.midi!,
                 durationBeats: event.durationBeats,
-                display: formatNoteShort(event.midi, event.durationBeats)
+                display: formatNoteShort(event.midi!, event.durationBeats)
               };
             } else if (event.type === "rest") {
               voiceColumns[event.voiceIndex] = {
@@ -57,7 +76,7 @@ function initTimeline(deps) {
     return { rows, voiceCount: state.voiceCount };
   }
 
-  function renderTimeline() {
+  function renderTimeline(): void {
     if (!elements.timeline) return;
 
     const { rows, voiceCount } = buildTimelineRows();
