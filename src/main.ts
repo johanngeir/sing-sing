@@ -8,6 +8,7 @@ import { initVoices } from "./ui/voices.ts";
 import { initPlayer } from "./ui/player.ts";
 import { initSettings } from "./ui/settings.ts";
 import { initTimeline } from "./ui/timeline.ts";
+import { initPianoRoll } from "./ui/pianoroll.ts";
 import { state, getVoiceInstruments, saveVoiceInstrument, getUserVoice as getStoredUserVoice, setUserVoice as setStoredUserVoice } from "./state.ts";
 
 const IS_DEV = import.meta.env.DEV;
@@ -54,7 +55,11 @@ const elements: AppElements = {
   showTimeline: document.getElementById("showTimeline") as HTMLInputElement,
   timelinePanel: document.querySelector(".panel--timeline"),
   resetSettings: document.getElementById("resetSettings") as HTMLButtonElement,
-  tempoSelect: document.getElementById("tempoSelect") as HTMLSelectElement
+  tempoSelect: document.getElementById("tempoSelect") as HTMLSelectElement,
+  pianoRoll: document.getElementById("pianoroll") as HTMLCanvasElement,
+  pianoRollTooltip: document.getElementById("pianorollTooltip"),
+  pianoRollLegend: document.getElementById("pianorollLegend"),
+  pianoRollPanel: document.querySelector(".panel--pianoroll") as HTMLElement
 };
 
 function setStatus(message: string) {
@@ -95,7 +100,10 @@ playerModule = initPlayer({
   startPlayback: (...args) => engineModule.startPlayback(...args),
   stopPlayback: () => engineModule.stopPlayback(),
   setTempo: (value) => engineModule.setTempo(value),
-  renderTimeline: () => timelineModule.renderTimeline(),
+  renderTimeline: () => {
+    timelineModule.renderTimeline();
+    pianoRollModule.renderPianoRoll();
+  },
   buildTimelineRows: () => timelineModule.buildTimelineRows(),
   loadNextScore: () => settingsModule.loadNextScore()
 });
@@ -105,6 +113,11 @@ timelineModule = initTimeline({
   elements,
   formatNoteShort: playerModule.formatNoteShort,
   formatRestShort: playerModule.formatRestShort
+});
+
+const pianoRollModule = initPianoRoll({
+  state,
+  elements
 });
 
 engineModule = initAudioEngine({
@@ -120,7 +133,10 @@ engineModule = initAudioEngine({
   getVoiceInstruments,
   createVoiceState: (...args) => voicesModule.createVoiceState(...args),
   applyUserVoiceMix: () => voicesModule.applyUserVoiceMix(),
-  renderTimeline: () => timelineModule.renderTimeline(),
+  renderTimeline: () => {
+    timelineModule.renderTimeline();
+    pianoRollModule.renderPianoRoll();
+  },
   getTotalBeats: () => playerModule.getTotalBeats(),
   getTotalDuration: () => playerModule.getTotalDuration(),
   getTotalMeasures: () => playerModule.getTotalMeasures(),

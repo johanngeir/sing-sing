@@ -155,4 +155,8 @@ export interface AppElements {
   timelinePanel: HTMLElement | null;
   resetSettings: HTMLButtonElement;
   tempoSelect: HTMLSelectElement;
+  pianoRoll: HTMLCanvasElement | null;
+  pianoRollTooltip: HTMLElement | null;
+  pianoRollLegend: HTMLElement | null;
+  pianoRollPanel: HTMLElement | null;
 }

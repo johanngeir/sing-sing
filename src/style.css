@@ -478,6 +478,68 @@ input[type="range"]::-moz-range-thumb {
   font-style: italic;
 }
 
+.panel--pianoroll {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pianoroll__container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  min-height: 300px;
+  max-height: 500px;
+  cursor: grab;
+}
+
+.pianoroll__container:active {
+  cursor: grabbing;
+}
+
+.pianoroll__container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pianoroll__tooltip {
+  position: absolute;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.pianoroll__legend {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pianoroll__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.pianoroll__legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
 .panel--timeline {
   display: flex;
   flex-direction: column;
@@ -562,6 +624,11 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (max-width: 900px) {
+  .pianoroll__container {
+    min-height: 250px;
+    max-height: 400px;
+  }
+
   .app__body {
     grid-template-columns: 1fr;
   }
@@ -638,6 +705,11 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (max-width: 480px) {
+  .pianoroll__container {
+    min-height: 200px;
+    max-height: 300px;
+  }
+
   .app {
     padding: 12px 10px 28px;
   }
