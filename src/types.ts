@@ -1,4 +1,6 @@
 import type * as Tone from "tone";
+export type { Score, InstrumentKey } from "./schemas.ts";
+import type { Score, InstrumentKey } from "./schemas.ts";
 
 // ── Parser types ─────────────────────────────────────────────────────
 
@@ -35,14 +37,6 @@ export interface ParsedScore {
   timeline: TimelineEvent[];
 }
 
-// ── Score catalog ────────────────────────────────────────────────────
-
-export interface Score {
-  name: string;
-  url: string;
-  voices: string;
-}
-
 // ── Audio / Voice types ──────────────────────────────────────────────
 
 export interface InstrumentSource {
@@ -59,8 +53,6 @@ export interface InstrumentConfig {
   urls: Record<string, string>;
   release: number;
 }
-
-export type InstrumentKey = "piano" | "violin" | "cello" | "organ" | "saxophone";
 
 export interface VoiceState {
   name: string;

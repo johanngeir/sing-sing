@@ -1,12 +1,13 @@
 import type { AppState, LoopMode } from "./types.ts";
+import { ThemeSchema, BoolStringSchema, VoiceInstrumentsSchema, safeParse } from "./schemas.ts";
 
 function createState(): AppState {
   return {
     currentScore: null,
     userVoice: localStorage.getItem("userVoice") || "T1",
-    panInverted: localStorage.getItem("panInverted") === "true",
-    theme: (localStorage.getItem("theme") === "dark" ? "dark" : "light"),
-    autoAdvance: localStorage.getItem("autoAdvance") === "true",
+    panInverted: safeParse(BoolStringSchema, localStorage.getItem("panInverted"), false),
+    theme: safeParse(ThemeSchema, localStorage.getItem("theme"), "light"),
+    autoAdvance: safeParse(BoolStringSchema, localStorage.getItem("autoAdvance"), false),
     showTimeline: localStorage.getItem("showTimeline") !== "false",
     tempo: 120,
     originalTempo: 120,
@@ -35,7 +36,8 @@ const state: AppState = createState();
 
 function getVoiceInstruments(): Record<string, string> {
   try {
-    return JSON.parse(localStorage.getItem("voiceInstruments") || "{}") || {};
+    const raw = JSON.parse(localStorage.getItem("voiceInstruments") || "{}");
+    return safeParse(VoiceInstrumentsSchema, raw, {});
   } catch {
     return {};
   }
