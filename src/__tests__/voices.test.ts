@@ -251,6 +251,64 @@ describe("voices pure logic", () => {
       expect(rest.voiceIndex).toBe(topChord.voiceIndex);
     });
 
+    it("merges small groups when baseGroupCount exceeds expectedVoiceCount", () => {
+      // Simulates a score like "Drottinn gerðu hljótt" where a brief XML voice 3
+      // creates more groups than expected SATB voices
+      const mainGroup = Array.from({ length: 12 }, (_, idx) =>
+        makeEvent({ partIndex: 0, voice: "1", timeBeats: idx, midi: 72 + (idx % 3) })
+      );
+      const secondGroup = Array.from({ length: 12 }, (_, idx) =>
+        makeEvent({ partIndex: 0, voice: "2", timeBeats: idx, midi: 60 + (idx % 3) })
+      );
+      const smallBriefVoice = [
+        makeEvent({ partIndex: 0, voice: "3", timeBeats: 20, midi: 55 }),
+        makeEvent({ partIndex: 0, voice: "3", timeBeats: 21, midi: 53 })
+      ];
+      const timeline: TimelineEvent[] = [...mainGroup, ...secondGroup, ...smallBriefVoice];
+
+      const deps = createMockDeps({
+        timeline,
+        currentScore: { name: "Test", url: "", voices: "SA" }
+      });
+      const api = initVoices(deps);
+
+      api.assignVoicesToNotes();
+
+      expect(deps.state.voiceCount).toBe(2);
+      expect(smallBriefVoice[0].voiceIndex).toBe(secondGroup[0].voiceIndex);
+      expect(smallBriefVoice[1].voiceIndex).toBe(secondGroup[0].voiceIndex);
+    });
+
+    it("merges small groups that have the highest median pitch in their part", () => {
+      // Reproduces the actual "Drottinn gerðu hljótt" bug: voice 3 (2 notes, median 66)
+      // has higher median than voice 1 (median 64) and voice 2 (median 61.5),
+      // so it sorts to index 0 — previously the merge loop skipped index 0
+      const mainGroup = Array.from({ length: 20 }, (_, idx) =>
+        makeEvent({ partIndex: 0, voice: "1", timeBeats: idx, midi: 64 + (idx % 3) })
+      );
+      const secondGroup = Array.from({ length: 15 }, (_, idx) =>
+        makeEvent({ partIndex: 0, voice: "2", timeBeats: idx, midi: 60 + (idx % 3) })
+      );
+      const highSmallVoice = [
+        makeEvent({ partIndex: 0, voice: "3", timeBeats: 30, midi: 67 }),
+        makeEvent({ partIndex: 0, voice: "3", timeBeats: 31, midi: 65 })
+      ];
+      const timeline: TimelineEvent[] = [...mainGroup, ...secondGroup, ...highSmallVoice];
+
+      const deps = createMockDeps({
+        timeline,
+        currentScore: { name: "Test", url: "", voices: "SA" }
+      });
+      const api = initVoices(deps);
+
+      api.assignVoicesToNotes();
+
+      expect(deps.state.voiceCount).toBe(2);
+      // Small high group (median 66) should merge into mainGroup (median ~65), not survive as its own voice
+      expect(highSmallVoice[0].voiceIndex).toBe(mainGroup[0].voiceIndex);
+      expect(highSmallVoice[1].voiceIndex).toBe(mainGroup[0].voiceIndex);
+    });
+
     it("merges small non-chord groups into the closest group within 12 semitones", () => {
       const highGroup = Array.from({ length: 12 }, (_, idx) =>
         makeEvent({ partIndex: 0, voice: "1", timeBeats: idx, midi: 81 + (idx % 2) })
@@ -276,6 +334,29 @@ describe("voices pure logic", () => {
       expect(lowSmallGroup[0].voiceIndex).toBe(midGroup[0].voiceIndex);
       expect(lowSmallGroup[1].voiceIndex).toBe(midGroup[0].voiceIndex);
       expect(lowSmallGroup[0].voiceIndex).not.toBe(highGroup[0].voiceIndex);
+    });
+
+    it("does not merge small groups when notes overlap in time", () => {
+      const mainGroup = Array.from({ length: 15 }, (_, idx) =>
+        makeEvent({ partIndex: 0, voice: "1", timeBeats: idx, midi: 64 + (idx % 3) })
+      );
+      // Small group has notes at timeBeats 3 and 4 — same as mainGroup
+      const overlappingSmall = [
+        makeEvent({ partIndex: 0, voice: "2", timeBeats: 3, midi: 62 }),
+        makeEvent({ partIndex: 0, voice: "2", timeBeats: 4, midi: 61 })
+      ];
+      const timeline: TimelineEvent[] = [...mainGroup, ...overlappingSmall];
+
+      const deps = createMockDeps({
+        timeline,
+        currentScore: { name: "Test", url: "", voices: "S" }
+      });
+      const api = initVoices(deps);
+
+      api.assignVoicesToNotes();
+
+      // Groups must stay separate — merging would create simultaneous notes in one voice
+      expect(overlappingSmall[0].voiceIndex).not.toBe(mainGroup[0].voiceIndex);
     });
   });
 

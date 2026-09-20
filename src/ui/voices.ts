@@ -449,24 +449,22 @@ function initVoices(deps: VoicesDeps): VoicesApi {
     const baseGroupCount = voiceGroups.size;
     const needsChordSplitting = expectedVoiceCount > baseGroupCount;
 
-    if (!needsChordSplitting) {
-      state.voiceCount = baseGroupCount;
-      let voiceIndex = 0;
-      for (const group of voiceGroups.values()) {
-        for (const event of group) {
-          event.voiceIndex = voiceIndex;
-        }
-        voiceIndex++;
-      }
-      return;
-    }
-
     const partGroups = new Map<number, PartGroup[]>();
 
     for (const [key, groupEvents] of voiceGroups.entries()) {
       const [partStr, voiceStr] = key.split(':');
       const partIndex = parseInt(partStr, 10);
       const xmlVoice = parseInt(voiceStr, 10);
+
+      if (!partGroups.has(partIndex)) {
+        partGroups.set(partIndex, []);
+      }
+
+      if (!needsChordSplitting) {
+        partGroups.get(partIndex)!.push({ events: groupEvents, xmlVoice, fromChordSplit: false });
+        continue;
+      }
+
       const notes = groupEvents.filter(e => e.type === "note" && e.midi !== undefined);
       const rests = groupEvents.filter(e => e.type === "rest");
 
@@ -482,10 +480,6 @@ function initVoices(deps: VoicesDeps): VoicesApi {
       let maxChordSize = 0;
       for (const notesAtTime of timeMap.values()) {
         maxChordSize = Math.max(maxChordSize, notesAtTime.length);
-      }
-
-      if (!partGroups.has(partIndex)) {
-        partGroups.set(partIndex, []);
       }
 
       if (maxChordSize <= 1) {
@@ -560,14 +554,15 @@ function initVoices(deps: VoicesDeps): VoicesApi {
 
       groupStats.sort((a, b) => b.median - a.median);
 
-      for (let i = groupStats.length - 1; i > 0; i--) {
+      for (let i = groupStats.length - 1; i >= 0; i--) {
         const small = groupStats[i];
         if (small.count > 10) continue;
         if (small.fromChordSplit) continue;
 
         let closest = -1;
         let closestDist = Infinity;
-        for (let j = 0; j < i; j++) {
+        for (let j = 0; j < groupStats.length; j++) {
+          if (j === i) continue;
           if (groupStats[j].xmlVoice === small.xmlVoice) continue;
           const dist = Math.abs(groupStats[j].median - small.median);
           if (dist < closestDist) {
@@ -579,9 +574,19 @@ function initVoices(deps: VoicesDeps): VoicesApi {
         if (closest >= 0 && closestDist <= 12) {
           const targetGroup = groups[groupStats[closest].idx].events;
           const sourceGroup = groups[small.idx].events;
+
+          const targetNoteTimes = new Set(
+            targetGroup.filter(e => e.type === "note").map(e => e.timeBeats),
+          );
+          const hasOverlap = sourceGroup.some(
+            e => e.type === "note" && targetNoteTimes.has(e.timeBeats),
+          );
+          if (hasOverlap) continue;
+
           targetGroup.push(...sourceGroup);
           sourceGroup.length = 0;
           groupStats.splice(i, 1);
+          if (closest > i) closest--;
         }
       }
     }
