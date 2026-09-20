@@ -11,6 +11,7 @@ function createState(): AppState {
     showTimeline: localStorage.getItem("showTimeline") !== "false",
     tempo: 120,
     originalTempo: 120,
+    tempoMap: [],
     parts: [],
     timeline: [],
     timelineRows: [],

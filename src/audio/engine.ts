@@ -2,6 +2,7 @@ import type * as ToneNs from "tone";
 import { ok, type Result } from "neverthrow";
 import type { AppState, AppElements, VoiceName, VoiceState, ParsedScore, InstrumentKey } from "../types";
 import type { ParseError } from "../parser/musicxml";
+import { beatsToSeconds } from "../tempo";
 
 interface AudioEngineDeps {
   Tone: typeof ToneNs;
@@ -56,8 +57,8 @@ function initAudioEngine(deps: AudioEngineDeps) {
       const voice = state.voices[note.voiceIndex];
       if (!voice) continue;
 
-      const startSeconds = (note.timeBeats * 60) / state.tempo;
-      const durationSeconds = (note.durationBeats * 60) / state.tempo;
+      const startSeconds = beatsToSeconds(state, note.timeBeats);
+      const durationSeconds = beatsToSeconds(state, note.timeBeats + note.durationBeats) - startSeconds;
       const noteName = midiToNoteName(note.midi!);
       Tone.Transport.schedule((time) => {
         voice.sampler.triggerAttackRelease(noteName, durationSeconds, time, 0.8);
@@ -81,7 +82,7 @@ function initAudioEngine(deps: AudioEngineDeps) {
     await Tone.start();
     state.isPlaying = true;
     buildSchedule();
-    Tone.Transport.ticks = fromBeats * Tone.Transport.PPQ;
+    Tone.Transport.seconds = beatsToSeconds(state, fromBeats);
     Tone.Transport.start();
     elements.playPauseButton.textContent = "❚❚";
     updatePlaybackHighlight();
@@ -146,6 +147,7 @@ function initAudioEngine(deps: AudioEngineDeps) {
     state.timelineRows = [];
     state.voiceCount = 0;
     state.parts = [];
+    state.tempoMap = [];
     state.scoreReady = false;
     state.scoreTitle = "";
 
@@ -181,6 +183,7 @@ function initAudioEngine(deps: AudioEngineDeps) {
 
     state.originalTempo = Math.round(parsed.tempo);
     state.tempo = state.originalTempo;
+    state.tempoMap = parsed.tempoMap;
     state.scoreTitle = parsed.title;
     state.timeline = parsed.timeline;
     state.parts = parsed.parts;

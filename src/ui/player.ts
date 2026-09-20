@@ -1,4 +1,5 @@
 import type * as ToneNs from "tone";
+import { beatsToSeconds as tempoBeatsToSeconds, secondsToBeats as tempoSecondsToBeats } from "../tempo";
 import type { AppState, AppElements, LoopMode, TimelineRow } from "../types";
 
 interface TimelineRowsResult {
@@ -91,6 +92,27 @@ function initPlayer(deps: PlayerDeps): PlayerApi {
     return null;
   }
 
+  // Measures in play order: a repeated measure yields one block per pass.
+  function getMeasureBlocks(): { measure: number; startSeconds: number }[] {
+    const blocks: { measure: number; startSeconds: number }[] = [];
+    for (const row of state.timelineRows) {
+      const last = blocks[blocks.length - 1];
+      if (!last || last.measure !== row.measure) {
+        blocks.push({ measure: row.measure, startSeconds: row.timeSeconds });
+      }
+    }
+    return blocks;
+  }
+
+  function getCurrentBlockIndex(): number {
+    const currentSeconds = Tone.Transport.seconds;
+    const blocks = getMeasureBlocks();
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      if (blocks[i].startSeconds <= currentSeconds) return i;
+    }
+    return 0;
+  }
+
   function getTotalBeats(): number {
     if (state.timelineRows.length === 0) return 0;
     const lastRow = state.timelineRows[state.timelineRows.length - 1];
@@ -98,15 +120,15 @@ function initPlayer(deps: PlayerDeps): PlayerApi {
   }
 
   function getTotalDuration(): number {
-    return (getTotalBeats() * 60) / state.tempo;
+    return beatsToSeconds(getTotalBeats());
   }
 
   function beatsToSeconds(beats: number): number {
-    return (beats * 60) / state.tempo;
+    return tempoBeatsToSeconds(state, beats);
   }
 
   function secondsToBeats(seconds: number): number {
-    return (seconds * state.tempo) / 60;
+    return tempoSecondsToBeats(state, seconds);
   }
 
   function getCurrentMeasure(): number {
@@ -249,30 +271,28 @@ function initPlayer(deps: PlayerDeps): PlayerApi {
     });
 
     elements.skipBackButton.addEventListener("click", () => {
-      const currentMeasure = getCurrentMeasure();
-      if (currentMeasure > 0) {
-        Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure - 1) as number;
-      } else {
-        Tone.Transport.seconds = 0;
-      }
+      const blocks = getMeasureBlocks();
+      const index = getCurrentBlockIndex();
+      Tone.Transport.seconds = index > 0 ? blocks[index - 1].startSeconds : 0;
     });
 
     elements.skipForwardButton.addEventListener("click", () => {
-      const currentMeasure = getCurrentMeasure();
-      const totalMeasures = getTotalMeasures();
-      if (currentMeasure < totalMeasures - 1) {
-        Tone.Transport.seconds = getMeasureStartSeconds(currentMeasure + 1) as number;
+      const blocks = getMeasureBlocks();
+      const index = getCurrentBlockIndex();
+      if (index < blocks.length - 1) {
+        Tone.Transport.seconds = blocks[index + 1].startSeconds;
       }
       // If at last measure, do nothing (stay at current position)
     });
 
     elements.setLoopButton.addEventListener("click", () => {
-      const currentMeasure = getCurrentMeasure();
+      const currentBlock = getMeasureBlocks()[getCurrentBlockIndex()];
+      const currentMeasure = currentBlock?.measure ?? 0;
 
       if (state.loopMode === "inactive") {
         // First click - set A point
         state.loopA = currentMeasure;
-        state.loopASeconds = getMeasureStartSeconds(currentMeasure);
+        state.loopASeconds = currentBlock?.startSeconds ?? 0;
         state.loopMode = "settingB";
 
         // Show marker A
@@ -288,7 +308,7 @@ function initPlayer(deps: PlayerDeps): PlayerApi {
       } else if (state.loopMode === "settingB") {
         // Second click - set B point
         let loopB = currentMeasure;
-        let loopBSeconds = getMeasureStartSeconds(currentMeasure);
+        let loopBSeconds: number | null = currentBlock?.startSeconds ?? 0;
 
         // Auto-swap if B < A
         if ((loopBSeconds as number) < (state.loopASeconds as number)) {
@@ -390,7 +410,7 @@ function initPlayer(deps: PlayerDeps): PlayerApi {
         const timeBeats = parseFloat(row.dataset.timeBeats || "");
         if (!Number.isFinite(timeBeats)) return;
 
-        const timeSeconds = (timeBeats * 60) / state.tempo;
+        const timeSeconds = beatsToSeconds(timeBeats);
         Tone.Transport.seconds = timeSeconds;
 
         if (!state.isPlaying) {

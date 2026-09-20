@@ -1,4 +1,5 @@
 import type { AppState, AppElements, TimelineEvent, TimelineRow, VoiceCell } from "../types";
+import { beatsToSeconds } from "../tempo";
 
 interface TimelineRowsResult {
   rows: TimelineRow[];
@@ -67,7 +68,7 @@ function initTimeline(deps: TimelineDeps): TimelineApi {
 
         return {
           timeBeats: group.timeBeats,
-          timeSeconds: (group.timeBeats * 60) / state.tempo,
+          timeSeconds: beatsToSeconds(state, group.timeBeats),
           measure: group.measure,
           voiceColumns
         };

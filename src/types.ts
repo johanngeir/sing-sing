@@ -30,8 +30,14 @@ export interface ParsedPart {
   timeline: TimelineEvent[];
 }
 
+export interface TempoMark {
+  beats: number;
+  bpm: number;
+}
+
 export interface ParsedScore {
   tempo: number;
+  tempoMap: TempoMark[];
   title: string;
   parts: ParsedPart[];
   timeline: TimelineEvent[];
@@ -102,6 +108,7 @@ export interface AppState {
   showTimeline: boolean;
   tempo: number;
   originalTempo: number;
+  tempoMap: TempoMark[];
   parts: ParsedPart[];
   timeline: TimelineEvent[];
   timelineRows: TimelineRow[];

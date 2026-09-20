@@ -48,6 +48,7 @@ function createMockDeps(overrides: Record<string, unknown> = {}) {
     currentScore: null,
     tempo: 120,
     originalTempo: 120,
+    tempoMap: [],
     timeline: [],
     parts: [],
     voices: [],

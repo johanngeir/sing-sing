@@ -1,4 +1,5 @@
 import * as Tone from "tone";
+import { beatsToSeconds, secondsToBeats } from "../tempo";
 import { AppState, AppElements, TimelineEvent } from "../types";
 
 const VOICE_COLORS = [
@@ -207,7 +208,7 @@ export function initPianoRoll({
 
     if (state.isPlaying) {
         const currentSeconds = Tone.Transport.seconds;
-        const currentBeats = currentSeconds * (state.tempo / 60);
+        const currentBeats = secondsToBeats(state, currentSeconds);
         
         const x = currentBeats * view.scaleX + view.offsetX + keyWidth;
         
@@ -399,7 +400,7 @@ export function initPianoRoll({
           const clampedBeat = Math.max(0, beat);
           
           if (state.tempo > 0) {
-              const seconds = clampedBeat * (60 / state.tempo);
+              const seconds = beatsToSeconds(state, clampedBeat);
               Tone.Transport.seconds = seconds;
               requestAnimationFrame(render);
           }

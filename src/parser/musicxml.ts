@@ -1,6 +1,6 @@
 import * as Tone from "tone";
 import { ok, err, type Result } from "neverthrow";
-import type { TimelineEvent, PartEvent, ParsedPart, ParsedScore } from "../types";
+import type { TimelineEvent, PartEvent, ParsedPart, ParsedScore, TempoMark } from "../types";
 
 interface ParseError {
   code: "INVALID_XML" | "PARSE_ERROR";
@@ -17,15 +17,7 @@ function midiToNoteName(midi: number): string {
   return Tone.Frequency(midi, "midi").toNote();
 }
 
-function getTempo(doc: Document): number {
-  const soundTempo = doc.querySelector("sound[tempo]");
-  if (soundTempo) {
-    const value = Number(soundTempo.getAttribute("tempo"));
-    if (Number.isFinite(value) && value > 0) {
-      return value;
-    }
-  }
-
+function fallbackTempo(doc: Document): number {
   const metronome = doc.querySelector("direction metronome per-minute");
   if (metronome) {
     const value = Number(metronome.textContent);
@@ -33,8 +25,76 @@ function getTempo(doc: Document): number {
       return value;
     }
   }
-
   return 120;
+}
+
+function readSoundTempo(child: Element): number | null {
+  const sound = child.querySelector("sound[tempo]");
+  if (!sound) return null;
+  const value = Number(sound.getAttribute("tempo"));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+interface MeasureBarline {
+  repeatForward: boolean;
+  repeatBackward: boolean;
+  endingStart: number[] | null;
+  endingEnd: boolean;
+}
+
+function readBarlines(measure: Element): MeasureBarline {
+  const result: MeasureBarline = { repeatForward: false, repeatBackward: false, endingStart: null, endingEnd: false };
+  measure.querySelectorAll(":scope > barline").forEach((barline) => {
+    const repeat = barline.querySelector("repeat");
+    if (repeat?.getAttribute("direction") === "forward") result.repeatForward = true;
+    if (repeat?.getAttribute("direction") === "backward") result.repeatBackward = true;
+    const ending = barline.querySelector("ending");
+    if (ending) {
+      const type = ending.getAttribute("type");
+      if (type === "start") {
+        result.endingStart = (ending.getAttribute("number") || "1")
+          .split(/[,\s]+/)
+          .map(Number)
+          .filter((n) => Number.isFinite(n));
+      } else {
+        result.endingEnd = true;
+      }
+    }
+  });
+  return result;
+}
+
+// Expands repeat barlines and volta endings (read from the first part) into
+// the sequence of measure indices actually played.
+function buildPlayOrder(measures: Element[]): number[] {
+  const bars = measures.map(readBarlines);
+  const order: number[] = [];
+  let repeatStart = 0;
+  let pass = 1;
+  let i = 0;
+  while (i < measures.length) {
+    const bar = bars[i];
+    if (bar.repeatForward) {
+      repeatStart = i;
+    }
+    if (bar.endingStart && !bar.endingStart.includes(pass)) {
+      while (i < measures.length && !bars[i].endingEnd) i++;
+      i++;
+      continue;
+    }
+    order.push(i);
+    if (bar.repeatBackward && pass === 1) {
+      pass = 2;
+      i = repeatStart;
+      continue;
+    }
+    if (bar.repeatBackward) {
+      pass = 1;
+      repeatStart = i + 1;
+    }
+    i++;
+  }
+  return order;
 }
 
 function getTitle(doc: Document): string {
@@ -95,7 +155,13 @@ interface TieEntry {
   measure: number;
 }
 
-function buildEventsForPart(part: Element, name: string, partIndex: number): ParsedPart {
+function buildEventsForPart(
+  part: Element,
+  name: string,
+  partIndex: number,
+  playOrder: number[],
+  tempoMarks: TempoMark[] | null
+): ParsedPart {
   const events: PartEvent[] = [];
   const tieMap = new Map<string, TieEntry>();
   let currentDivisions = 1;
@@ -103,10 +169,16 @@ function buildEventsForPart(part: Element, name: string, partIndex: number): Par
   let measureStartBeats = 0;
   let lastChordBeats = 0;
   const timeline: TimelineEvent[] = [];
-  let measureIndex = 0;
   let chordIndex = 0;
+  const measures = Array.from(part.querySelectorAll("measure"));
+  const divisionsAt: number[] = [];
 
-  part.querySelectorAll("measure").forEach((measure) => {
+  playOrder.forEach((measureIndex) => {
+    const measure = measures[measureIndex];
+    if (!measure) return;
+    if (divisionsAt[measureIndex] !== undefined) {
+      currentDivisions = divisionsAt[measureIndex];
+    }
     measureStartBeats = absoluteBeats;
     lastChordBeats = absoluteBeats;
 
@@ -119,6 +191,14 @@ function buildEventsForPart(part: Element, name: string, partIndex: number): Par
           if (Number.isFinite(value) && value > 0) {
             currentDivisions = value;
           }
+        }
+        return;
+      }
+
+      if (tag === "direction" && tempoMarks) {
+        const bpm = readSoundTempo(child);
+        if (bpm !== null) {
+          tempoMarks.push({ beats: absoluteBeats, bpm });
         }
         return;
       }
@@ -186,7 +266,7 @@ function buildEventsForPart(part: Element, name: string, partIndex: number): Par
           const tieStop = hasTie(child, "stop");
           const tieKey = `${voice}:${midi}`;
 
-          if (tieStart && !tieStop) {
+          if (tieStart) {
             const existing = tieMap.get(tieKey);
             const start = existing ? existing.start : noteBeats;
             const total = (existing ? existing.duration : 0) + durationBeats;
@@ -248,7 +328,7 @@ function buildEventsForPart(part: Element, name: string, partIndex: number): Par
       }
     });
 
-    measureIndex += 1;
+    divisionsAt[measureIndex + 1] = currentDivisions;
   });
 
   return {
@@ -271,21 +351,33 @@ function parseMusicXML(xmlText: string): Result<ParsedScore, ParseError> {
   }
 
   try {
-    const tempo = getTempo(doc);
     const title = getTitle(doc);
     const partNames = getPartNames(doc);
     const parts: ParsedPart[] = [];
     const timeline: TimelineEvent[] = [];
+    const partElements = Array.from(doc.querySelectorAll("part"));
+    const playOrder = partElements.length > 0
+      ? buildPlayOrder(Array.from(partElements[0].querySelectorAll("measure")))
+      : [];
+    const tempoMarks: TempoMark[] = [];
 
-    doc.querySelectorAll("part").forEach((part, index) => {
+    partElements.forEach((part, index) => {
       const id = part.getAttribute("id") || "Part";
       const name = partNames.get(id) || id;
-      const built = buildEventsForPart(part, name, index);
+      const built = buildEventsForPart(part, name, index, playOrder, index === 0 ? tempoMarks : null);
       parts.push(built);
       timeline.push(...built.timeline);
     });
 
-    return ok({ tempo, title, parts, timeline });
+    if (tempoMarks.length === 0) {
+      tempoMarks.push({ beats: 0, bpm: fallbackTempo(doc) });
+    }
+    const tempoMap = tempoMarks.filter((mark, i) => i === 0 || mark.beats > tempoMarks[i - 1].beats);
+    if (tempoMap[0].beats > 0) {
+      tempoMap.unshift({ beats: 0, bpm: tempoMap[0].bpm });
+    }
+
+    return ok({ tempo: tempoMap[0].bpm, tempoMap, title, parts, timeline });
   } catch (error) {
     return err({
       code: "PARSE_ERROR",
