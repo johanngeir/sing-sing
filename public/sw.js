@@ -8,7 +8,8 @@ const ASSETS_TO_CACHE = [
   '/scores/faerdu-mer-ljosid.musicxml',
   '/scores/fjallid-skjaldbreidur.musicxml',
   '/scores/nu-mattu-haegt.musicxml',
-  '/scores/samferda.musicxml'
+  '/scores/samferda.musicxml',
+  '/scores/verndarvaengur.musicxml'
 ];
 
 self.addEventListener('install', (event) => {

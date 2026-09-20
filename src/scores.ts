@@ -8,4 +8,6 @@ export const SCORES: Score[] = z.array(ScoreSchema).parse([
   { name: "Fjallið Skjaldbreiður", url: "/scores/fjallid-skjaldbreidur.musicxml", voices: "TTBB" },
   { name: "Nú máttu hægt", url: "/scores/nu-mattu-haegt.musicxml", voices: "TTBB" },
   { name: "Samferða", url: "/scores/samferda.musicxml", voices: "TTBB" },
+  { name: "Skye boat song", url: "/scores/skye-boat-song.musicxml", voices: "TTBB" },
+  { name: "Verndarvængur", url: "/scores/verndarvaengur.musicxml", voices: "TTBB" },
 ]);
