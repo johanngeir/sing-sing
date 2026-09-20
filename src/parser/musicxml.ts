@@ -74,8 +74,11 @@ function buildPlayOrder(measures: Element[]): number[] {
   let i = 0;
   while (i < measures.length) {
     const bar = bars[i];
-    if (bar.repeatForward) {
+    if (bar.repeatForward && i !== repeatStart) {
+      // A new repeat section; the previous one may have ended by skipping a
+      // volta past its repeat barline without resetting the pass counter.
       repeatStart = i;
+      pass = 1;
     }
     if (bar.endingStart && !bar.endingStart.includes(pass)) {
       while (i < measures.length && !bars[i].endingEnd) i++;
