@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0.3">
-  <movement-number>Endurfundir</movement-number>
-  <movement-title>Þögnin</movement-title>
+  <work>
+    <work-title>Ástarsaga</work-title>
+  </work>
   <identification>
     <creator type="lyricist">Textar: Jónas Friðrik Guðnason</creator>
     <creator type="composer">Alan Simmons útsetti</creator>
